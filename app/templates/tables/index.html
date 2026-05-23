@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h1>Mesas</h1><p>Interface first-mobile para atendimento no salão.</p></div></div>
+<div class="tables-grid">
+{% for t in tables %}
+<a class="table-card status-{{ t.status|lower|replace(' ', '-') }}" href="{{ url_for('tables.detail', table_id=t.id) }}">
+  <div><small>Mesa</small><strong>{{ "%02d"|format(t.number) }}</strong></div>
+  <span class="badge status">{{ t.status }}</span>
+  {% if t.current_order_id and t.orders %}
+    {% set o = t.orders[-1] %}
+    <b>R$ {{ "%.2f"|format(o.total|float) }}</b>
+    <small>{{ o.created_at.strftime('%H:%M') }}</small>
+  {% else %}
+    <b>Disponível</b><small>toque para abrir</small>
+  {% endif %}
+</a>
+{% endfor %}
+</div>
+{% endblock %}

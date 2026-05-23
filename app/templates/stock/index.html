@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h1>Estoque</h1><p>Entradas, perdas, consumo interno, ajustes e histórico.</p></div></div>
+<div class="row g-3">
+<div class="col-lg-4"><div class="glass-card"><h4>Movimentar estoque</h4>
+<form method="post" action="{{ url_for('stock.movement') }}">
+<select class="form-select mb-2" name="product_id">{% for p in products %}<option value="{{ p.id }}">{{ p.name }} — atual {{ p.stock }}</option>{% endfor %}</select>
+<select class="form-select mb-2" name="type"><option>Entrada</option><option>Saída</option><option>Ajuste</option><option>Perda</option><option>Consumo interno</option><option>Transferência</option></select>
+<input class="form-control mb-2" name="quantity" type="number" step="0.001" placeholder="Quantidade">
+<input class="form-control mb-2" name="unit_cost" type="number" step="0.01" placeholder="Custo unitário">
+<input class="form-control mb-2" name="note" placeholder="Observação">
+<button class="btn btn-neon w-100">Registrar</button>
+</form></div></div>
+<div class="col-lg-8"><div class="glass-card table-responsive"><h4>Últimas movimentações</h4><table class="table table-dark"><tbody>{% for m in movements %}<tr><td>{{ m.created_at.strftime("%d/%m %H:%M") }}</td><td>{{ m.product.name }}</td><td>{{ m.type }}</td><td>{{ m.quantity }}</td><td>{{ m.note }}</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

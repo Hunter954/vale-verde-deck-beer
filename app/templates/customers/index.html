@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h1>Clientes / Fiado</h1><p>Cadastro, limite, bloqueio e contas a receber.</p></div></div>
+<div class="row g-3">
+<div class="col-lg-4"><div class="glass-card"><h4>Novo cliente</h4><form method="post" action="{{ url_for('customers.create') }}">
+<input class="form-control mb-2" name="name" required placeholder="Nome"><input class="form-control mb-2" name="phone" placeholder="Telefone"><input class="form-control mb-2" name="cpf" placeholder="CPF"><input class="form-control mb-2" type="number" step="0.01" name="credit_limit" placeholder="Limite fiado"><textarea class="form-control mb-2" name="notes" placeholder="Observações"></textarea><button class="btn btn-neon w-100">Salvar</button>
+</form></div></div>
+<div class="col-lg-8"><div class="glass-card table-responsive"><h4>Dívidas em aberto</h4><table class="table table-dark">{% for d in debts %}<tr><td>{{ d.customer.name }}</td><td>{{ d.description }}</td><td>R$ {{ "%.2f"|format(d.amount|float) }}</td><td><form method="post" action="{{ url_for('customers.pay_debt', id=d.id) }}" class="d-flex gap-1"><input class="form-control form-control-sm" name="amount" placeholder="Valor"><button class="btn btn-sm btn-neon">Abater</button></form></td></tr>{% endfor %}</table></div></div>
+</div>
+<div class="glass-card mt-3 table-responsive"><h4>Clientes</h4><table class="table table-dark">{% for c in customers %}<tr><td>{{ c.name }}</td><td>{{ c.phone }}</td><td>Limite R$ {{ "%.2f"|format(c.credit_limit|float) }}</td><td>{{ "Bloqueado" if c.blocked else "Ativo" }}</td></tr>{% endfor %}</table></div>
+{% endblock %}

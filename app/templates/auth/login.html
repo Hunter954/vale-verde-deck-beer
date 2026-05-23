@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-shell">
+  <div class="glass-card login-card">
+    <div class="text-center mb-4">
+      <div class="logo-orb mx-auto mb-3"><i class="bi bi-cup-straw"></i></div>
+      <h1>Vale Verde Deck Beer</h1>
+      <p class="text-muted">Sistema de Gestão premium para tabacaria, lanchonete e deck beer.</p>
+    </div>
+    <form method="post">
+      {{ form.hidden_tag() }}
+      <label class="form-label">Email</label>{{ form.email(class="form-control form-control-lg mb-3", placeholder="admin@valeverde.com") }}
+      <label class="form-label">Senha</label>{{ form.password(class="form-control form-control-lg mb-3", placeholder="••••••••") }}
+      <div class="form-check mb-3">{{ form.remember(class="form-check-input") }} <label class="form-check-label">Manter conectado</label></div>
+      {{ form.submit(class="btn btn-neon btn-lg w-100") }}
+      <div class="hint mt-3">Seed inicial: admin@valeverde.com / admin123</div>
+    </form>
+  </div>
+</div>
+{% endblock %}

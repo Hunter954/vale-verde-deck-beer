@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h1>KDS — Setores</h1><p>Cozinha, Bar e Narguilé atualizando sem recarregar.</p></div></div>
+<div class="sector-tabs mb-3">
+{% for s in sectors %}<a class="btn {{ 'btn-neon' if active_sector and active_sector.id==s.id else 'btn-outline-light' }}" href="{{ url_for('kitchen.index', sector=s.slug) }}">{{ s.name }}</a>{% endfor %}
+</div>
+<div id="kds-board" data-sector="{{ active_sector.slug if active_sector else 'cozinha' }}" class="kds-grid">
+{% for i in items %}
+<div class="kds-card" data-id="{{ i.id }}">
+  <div class="d-flex justify-content-between"><strong>{{ "Mesa %02d"|format(i.order.table.number) if i.order.table else i.order.type }}</strong><span>{{ i.created_at.strftime("%H:%M") }}</span></div>
+  <h4>{{ i.quantity }}x {{ i.product.name }}</h4>
+  <p>{{ i.note or "Sem observação" }}</p>
+  <div class="btn-group w-100">
+    {% for st in ["Pendente","Em preparo","Pronto"] %}<button class="btn btn-sm btn-outline-light js-status" data-status="{{ st }}">{{ st }}</button>{% endfor %}
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

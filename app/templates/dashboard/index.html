@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Dashboard</h1><p>Visão geral do salão, caixa, estoque e performance.</p></div>
+</div>
+<div class="row g-3">
+  {% set data = [
+    ("Faturamento hoje", cards.day, "bi-lightning-charge"),
+    ("Semana", cards.week, "bi-calendar-week"),
+    ("Mês", cards.month, "bi-calendar3"),
+    ("Mesas abertas", cards.open_tables, "bi-grid"),
+    ("Comandas abertas", cards.open_orders, "bi-receipt"),
+    ("Estoque baixo", cards.low_stock, "bi-exclamation-triangle"),
+    ("Descontos", cards.discounts, "bi-percent"),
+    ("Cancelamentos", cards.cancellations, "bi-x-octagon")
+  ] %}
+  {% for label, value, icon in data %}
+  <div class="col-6 col-xl-3">
+    <div class="metric-card">
+      <i class="bi {{ icon }}"></i>
+      <span>{{ label }}</span>
+      <strong>{% if "Faturamento" in label or label in ["Semana","Mês","Descontos"] %}R$ {{ "%.2f"|format(value|float) }}{% else %}{{ value }}{% endif %}</strong>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="row g-3 mt-1">
+  <div class="col-lg-6"><div class="glass-card"><h4>Produtos mais vendidos</h4>
+    <div class="list-clean">{% for name, qty in top_products %}<div><span>{{ name }}</span><b>{{ qty }}</b></div>{% else %}<p class="text-muted">Sem vendas ainda.</p>{% endfor %}</div>
+  </div></div>
+  <div class="col-lg-6"><div class="glass-card"><h4>Formas de pagamento</h4>
+    <div class="list-clean">{% for method, total in payment_methods %}<div><span>{{ method }}</span><b>R$ {{ "%.2f"|format(total|float) }}</b></div>{% else %}<p class="text-muted">Nenhum pagamento registrado.</p>{% endfor %}</div>
+  </div></div>
+</div>
+{% endblock %}
