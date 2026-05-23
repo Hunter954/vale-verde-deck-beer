@@ -12,7 +12,7 @@
   <link href="{{ url_for('static', filename='css/app.css', v='dashboard-fix-2') }}" rel="stylesheet">
   <style id="dashboard-critical-css">
 :root{
-  --bg:#020706;--bg-soft:#07110e;--card:#0b1311;--card2:#101916;--neon:#39ff88;--neon2:#13d66d;--green:#0f3d2e;--ice:#f4fff8;--muted:#9ca3af;--line:rgba(57,255,136,.18);--line-soft:rgba(255,255,255,.075);--danger:#ff5757;--warning:#f5b82e;--blue:#339dff;--purple:#8b5cf6;
+  --bg:#020706;--bg-soft:#07110e;--card:#0b1311;--card2:#101916;--neon:#39ff88;--neon2:#13d66d;--green:#0f3d2e;--ice:#f4fff8;--muted:#9ca3af;--line:rgba(57,255,136,.18);--line-soft:rgba(255,255,255,.075);--danger:#ff5757;--warning:#f5b82e;--blue:#339dff;--purple:#8b5cf6;}
 *{box-sizing:border-box}
 html{min-height:100%}
 body{min-height:100vh;background:radial-gradient(circle at 82% -8%,rgba(57,255,136,.13),transparent 30%),radial-gradient(circle at 10% 0,rgba(57,255,136,.06),transparent 24%),linear-gradient(180deg,#020706 0%,#050908 100%);color:var(--ice);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;letter-spacing:-.02em}
@@ -39,7 +39,50 @@ a{text-decoration:none}.fw-black{font-weight:900}.text-neon{color:var(--neon)!im
 @media (min-width:992px){.d-lg-flex{display:flex!important}.px-lg-5{padding-left:3rem!important;padding-right:3rem!important}.py-lg-4{padding-top:1.5rem!important;padding-bottom:1.5rem!important}}
 @media (max-width:991.98px){.d-lg-none{display:block!important}}
 
-  </style>
+  
+
+/* Ajuste compacto para dashboard caber em 1920x1080 sem cortar os cards inferiores */
+@media (min-width: 1330px) and (min-height: 900px){
+  .topbar{height:78px;padding:0 38px}
+  .content{padding-top:78px}
+  .content>.container-fluid{padding-top:18px!important;padding-bottom:16px!important}
+  .dashboard-page{max-height:calc(100vh - 112px);overflow:hidden}
+  .dashboard-head{margin-bottom:14px}
+  .dashboard-head h1{font-size:1.82rem;margin-bottom:6px}
+  .dashboard-head p{font-size:.94rem}
+  .date-filter,.panel-title button{height:40px;padding:0 14px}
+  .metric-grid{gap:10px;margin-bottom:10px}
+  .metric-kpi{min-height:116px;padding:18px 22px;gap:18px}
+  .kpi-icon{width:58px;height:58px;border-radius:13px}
+  .kpi-icon i{font-size:1.75rem}
+  .metric-kpi span{margin-bottom:6px}
+  .metric-kpi strong{font-size:1.58rem}
+  .metric-kpi small{margin-top:8px;font-size:.82rem}
+  .dashboard-grid-main{gap:12px;margin-bottom:12px}
+  .panel{padding:17px 22px}
+  .panel-title{margin-bottom:10px}
+  .panel-title h2{font-size:1.08rem}
+  .chart-wrap{height:220px}
+  .payment-content{grid-template-columns:230px 1fr;gap:22px;min-height:205px}
+  .donut-wrap{width:210px;height:210px}
+  .payment-list{gap:14px}
+  .panel-footer{margin-top:11px;padding:11px 16px}
+  .mini-summary{gap:14px}
+  .mini-summary i{width:46px;height:46px;font-size:1.35rem}
+  .mini-summary strong{font-size:1.2rem}
+  .operational-grid{gap:12px}
+  .ops-card{min-height:142px;padding:16px 16px 8px;grid-template-columns:1fr 120px;gap:8px}
+  .ops-main{gap:14px}
+  .ops-icon{width:60px;height:60px;min-width:60px}
+  .ops-icon i{font-size:1.55rem}
+  .ops-card span{margin-bottom:5px;font-size:.92rem}
+  .ops-card strong{font-size:1.58rem}
+  .ops-card p{font-size:.9rem;margin-top:3px}
+  .ops-card a{height:36px;font-size:.9rem}
+  .sparkline{height:52px}
+}
+
+</style>
 </head>
 <body>
 {% if current_user.is_authenticated %}
