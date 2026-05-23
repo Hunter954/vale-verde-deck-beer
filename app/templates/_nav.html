@@ -1,11 +1,12 @@
-<nav class="nav flex-column gap-1">
-  <a href="{{ url_for('dashboard.index') }}" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
-  <a href="{{ url_for('tables.index') }}" class="nav-link"><i class="bi bi-grid-3x3-gap"></i> Mesas</a>
-  <a href="{{ url_for('pos.index') }}" class="nav-link"><i class="bi bi-cash-register"></i> Caixa / PDV</a>
-  <a href="{{ url_for('kitchen.index') }}" class="nav-link"><i class="bi bi-fire"></i> KDS Setores</a>
-  <a href="{{ url_for('products.index') }}" class="nav-link"><i class="bi bi-box-seam"></i> Produtos</a>
-  <a href="{{ url_for('stock.index') }}" class="nav-link"><i class="bi bi-boxes"></i> Estoque</a>
-  <a href="{{ url_for('customers.index') }}" class="nav-link"><i class="bi bi-people"></i> Clientes / Fiado</a>
-  <a href="{{ url_for('reports.index') }}" class="nav-link"><i class="bi bi-graph-up-arrow"></i> Relatórios</a>
-  <a href="{{ url_for('settings.index') }}" class="nav-link"><i class="bi bi-gear"></i> Configurações</a>
+{% set endpoint = request.endpoint or '' %}
+<nav class="nav flex-column gap-1 app-nav">
+  <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'active' if endpoint.startswith('dashboard.') else '' }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{{ url_for('tables.index') }}" class="nav-link {{ 'active' if endpoint.startswith('tables.') else '' }}"><i class="bi bi-grid-3x3-gap"></i> Mesas</a>
+  <a href="{{ url_for('pos.index') }}" class="nav-link {{ 'active' if endpoint.startswith('pos.') else '' }}"><i class="bi bi-cash-register"></i> Caixa / PDV</a>
+  <a href="{{ url_for('kitchen.index') }}" class="nav-link {{ 'active' if endpoint.startswith('kitchen.') else '' }}"><i class="bi bi-fire"></i> KDS Setores</a>
+  <a href="{{ url_for('products.index') }}" class="nav-link {{ 'active' if endpoint.startswith('products.') else '' }}"><i class="bi bi-box-seam"></i> Produtos</a>
+  <a href="{{ url_for('stock.index') }}" class="nav-link {{ 'active' if endpoint.startswith('stock.') else '' }}"><i class="bi bi-boxes"></i> Estoque</a>
+  <a href="{{ url_for('customers.index') }}" class="nav-link {{ 'active' if endpoint.startswith('customers.') else '' }}"><i class="bi bi-people"></i> Clientes / Fiado</a>
+  <a href="{{ url_for('reports.index') }}" class="nav-link {{ 'active' if endpoint.startswith('reports.') else '' }}"><i class="bi bi-graph-up-arrow"></i> Relatórios</a>
+  <a href="{{ url_for('settings.index') }}" class="nav-link {{ 'active' if endpoint.startswith('settings.') else '' }}"><i class="bi bi-gear"></i> Configurações</a>
 </nav>
