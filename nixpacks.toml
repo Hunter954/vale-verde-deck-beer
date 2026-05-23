@@ -1,0 +1,5 @@
+[phases.setup]
+nixPkgs = ["python312", "postgresql", "gcc"]
+
+[start]
+cmd = "bash start.sh"

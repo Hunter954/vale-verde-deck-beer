@@ -2,6 +2,15 @@
 
 Sistema web Flask para Tabacaria / Lanchonete / Deck Beer com visual premium escuro, neon verde, mesas, comandas, PDV, estoque, KDS por setor, clientes/fiado, funcionários e relatórios.
 
+## Correções desta versão
+
+- Corrigido erro de deploy no Railway relacionado a `libpq.so.5` / `psycopg2`.
+- Projeto travado em Python 3.12.8 via `runtime.txt` e `.python-version`.
+- Incluído `Dockerfile` com `libpq5` e `libpq-dev` para garantir suporte ao PostgreSQL.
+- Incluído `nixpacks.toml` como fallback caso o Railway use Nixpacks.
+- `start.sh` cria tabelas e roda seed automaticamente antes do Gunicorn, evitando precisar de SSH no primeiro deploy.
+- Uploads/fotos usam `RAILWAY_VOLUME_MOUNT_PATH` quando existir; localmente usa `uploads/`.
+
 ## Stack
 
 - Python Flask
@@ -36,6 +45,47 @@ Sistema web Flask para Tabacaria / Lanchonete / Deck Beer com visual premium esc
 - Relatórios iniciais por período, pagamentos e produtos vendidos
 - Seed inicial robusto
 
+## Admin inicial
+
+- Email: `admin@valeverde.com`
+- Senha: `admin123`
+
+Troque a senha depois do primeiro acesso.
+
+## Uploads / fotos dos produtos
+
+Sim, o sistema usa volume para salvar fotos.
+
+No Railway, crie um volume no serviço web e monte, por exemplo, em:
+
+```txt
+/app/uploads
+```
+
+O Railway injeta a variável:
+
+```env
+RAILWAY_VOLUME_MOUNT_PATH=/app/uploads
+```
+
+O sistema usa automaticamente:
+
+```python
+UPLOAD_FOLDER = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.getenv("UPLOAD_FOLDER") or "uploads"
+```
+
+As imagens dos produtos são salvas em:
+
+```txt
+/app/uploads/products/
+```
+
+Localmente, se não existir volume, elas ficam em:
+
+```txt
+uploads/products/
+```
+
 ## Rodando localmente
 
 ### Linux/macOS
@@ -45,9 +95,6 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 export FLASK_APP=run.py
-flask db init
-flask db migrate -m "initial tables"
-flask db upgrade
 python -m app.seed
 flask run
 ```
@@ -59,27 +106,26 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 $env:FLASK_APP="run.py"
-flask db init
-flask db migrate -m "initial tables"
-flask db upgrade
 python -m app.seed
 flask run
 ```
 
-## Admin inicial
+O seed usa `db.create_all()`, então cria as tabelas automaticamente para o primeiro uso.
 
-- Email: `admin@valeverde.com`
-- Senha: `admin123`
+## Migrações manuais, se quiser usar Flask-Migrate
 
-Troque a senha depois do primeiro acesso.
+```bash
+flask db init
+flask db migrate -m "initial tables"
+flask db upgrade
+```
 
 ## Deploy no Railway
 
 1. Crie um repositório no GitHub e envie este projeto.
 2. No Railway, crie um novo projeto conectado ao GitHub.
 3. Adicione um serviço PostgreSQL.
-4. Adicione um volume para uploads.
-5. Configure as variáveis:
+4. No serviço web, configure as variáveis:
 
 ```env
 SECRET_KEY=uma-chave-forte
@@ -87,23 +133,39 @@ FLASK_ENV=production
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 ```
 
-6. Para uploads persistentes, o app usa automaticamente:
+5. Adicione um volume ao serviço web e monte em:
 
-```python
-UPLOAD_FOLDER = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "uploads")
+```txt
+/app/uploads
 ```
 
-7. O deploy usa:
+6. O start command já está configurado como:
 
 ```bash
-gunicorn run:app
+bash start.sh
 ```
 
-8. Depois do primeiro deploy, rode no shell do Railway:
+7. O `start.sh` roda automaticamente:
 
 ```bash
-flask db upgrade
 python -m app.seed
+gunicorn run:app --bind 0.0.0.0:${PORT:-8080}
+```
+
+Por isso, no primeiro deploy, o banco e o admin inicial já são criados sem precisar entrar por SSH.
+
+## Se o Railway usar Dockerfile
+
+O projeto já inclui um `Dockerfile` com Python 3.12 e bibliotecas do PostgreSQL:
+
+```dockerfile
+apt-get install -y gcc libpq5 libpq-dev
+```
+
+Isso corrige o erro:
+
+```txt
+ImportError: libpq.so.5: cannot open shared object file: No such file or directory
 ```
 
 ## Estrutura
@@ -124,11 +186,17 @@ vale-verde-system/
 │   ├── settings/
 │   ├── static/
 │   └── templates/
+├── uploads/
 ├── config.py
 ├── run.py
 ├── requirements.txt
 ├── Procfile
 ├── railway.json
+├── runtime.txt
+├── .python-version
+├── nixpacks.toml
+├── Dockerfile
+├── start.sh
 └── README.md
 ```
 
