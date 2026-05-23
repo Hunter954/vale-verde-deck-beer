@@ -1,10 +1,134 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>Caixa / PDV</h1><p>Venda rápida, fechamento de mesa, pagamentos parciais e múltiplos.</p></div><form method="post" action="{{ url_for('pos.quick_sale') }}"><button class="btn btn-neon">Venda rápida</button></form></div>
-<div class="glass-card table-responsive">
-<table class="table table-dark align-middle"><thead><tr><th>Código</th><th>Tipo</th><th>Mesa</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
-{% for o in open_orders %}
-<tr><td>{{ o.code }}</td><td>{{ o.type }}</td><td>{{ "%02d"|format(o.table.number) if o.table else "-" }}</td><td>R$ {{ "%.2f"|format(o.total|float) }}</td><td>{{ o.status }}</td><td><a class="btn btn-sm btn-neon" href="{{ url_for('pos.order', order_id=o.id) }}">Abrir</a></td></tr>
-{% endfor %}
-</tbody></table></div>
+<div class="pos-page">
+  <div class="pos-head">
+    <div>
+      <h1>Caixa / PDV</h1>
+      <p>PDV para atendimento no salão. Selecione os produtos e monte o pedido.</p>
+    </div>
+    <div class="pos-actions-head">
+      {% if open_orders %}
+      <form method="get" action="{{ url_for('pos.index') }}" class="pos-order-select">
+        <select name="order_id" onchange="this.form.submit()">
+          {% for o in open_orders %}
+          <option value="{{ o.id }}" {{ 'selected' if order and o.id == order.id else '' }}>
+            {{ 'Mesa %02d'|format(o.table.number) if o.table else o.type }} · {{ o.code or ('#' ~ o.id) }}
+          </option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('pos.quick_sale') }}">
+        <button class="pos-btn-primary" type="submit"><i class="bi bi-plus-lg"></i> Venda rápida</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="pos-layout">
+    <section class="pos-panel pos-products-panel">
+      <div class="pos-panel-title">Adicionar produto ao pedido</div>
+      <form class="pos-search" method="get" action="{{ url_for('pos.index') }}">
+        {% if order %}<input type="hidden" name="order_id" value="{{ order.id }}">{% endif %}
+        <input type="hidden" name="category" value="{{ selected_category }}">
+        <i class="bi bi-search"></i>
+        <input name="q" value="{{ q }}" placeholder="Buscar produto..." autocomplete="off">
+      </form>
+
+      <div class="pos-categories">
+        <a class="pos-cat {{ 'active' if selected_category in ['todos',''] else '' }}" href="{{ url_for('pos.index', order_id=order.id if order else None, category='todos', q=q) }}">Todos</a>
+        {% for category in categories %}
+        <a class="pos-cat {{ 'active' if selected_category == category.id|string else '' }}" href="{{ url_for('pos.index', order_id=order.id if order else None, category=category.id, q=q) }}">{{ category.name }}</a>
+        {% endfor %}
+      </div>
+
+      {% if not order %}
+      <div class="pos-empty-order-warning">
+        <i class="bi bi-info-circle"></i>
+        Abra uma mesa na tela de Mesas ou clique em <b>Venda rápida</b> para começar a adicionar produtos.
+      </div>
+      {% endif %}
+
+      <div class="pos-product-grid">
+        {% for card in product_cards %}
+        {% set p = card.product %}
+        <form method="post" action="{{ url_for('pos.add_product', order_id=order.id) if order else url_for('pos.quick_sale') }}" class="pos-product-card">
+          {% if order %}
+          <input type="hidden" name="product_id" value="{{ p.id }}">
+          <input type="hidden" name="quantity" value="1">
+          <input type="hidden" name="category" value="{{ selected_category }}">
+          <input type="hidden" name="q" value="{{ q }}">
+          {% endif %}
+          <button type="submit" {{ 'disabled' if not order else '' }}>
+            <span class="pos-product-img"><img src="{{ card.thumb }}" alt="{{ p.name }}"></span>
+            <span class="pos-product-meta">{{ p.category.name if p.category else 'Produto' }}</span>
+            <strong>{{ p.name }}</strong>
+            <b>{{ money(p.price) }}</b>
+          </button>
+        </form>
+        {% else %}
+        <div class="pos-empty-products">Nenhum produto encontrado para essa busca.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="pos-panel pos-order-panel">
+      {% if order %}
+      <div class="pos-order-header">
+        <div>
+          <h2>Pedido {{ 'Mesa %02d'|format(order.table.number) if order.table else order.type }}</h2>
+          <span class="pos-status-pill">{{ order.status }}</span>
+        </div>
+        <small>Atendente<br><b>{{ current_user.name }}</b></small>
+      </div>
+
+      <div class="pos-order-table-head">
+        <span>Item</span><span>Qtd.</span><span>Preço</span><span>Total</span><span></span>
+      </div>
+
+      <div class="pos-order-items">
+        {% for card in active_item_cards %}
+        {% set item = card.item %}
+        <div class="pos-order-item">
+          <div class="pos-order-prod">
+            <img src="{{ card.thumb }}" alt="{{ item.product.name }}">
+            <div><strong>{{ item.product.name }}</strong><small>{{ item.product.category.name if item.product.category else 'Produto' }}</small></div>
+          </div>
+          <form class="qty-control" method="post" action="{{ url_for('pos.update_quantity', item_id=item.id) }}">
+            <button name="action" value="minus" type="submit">−</button><span>{{ '%g'|format(item.quantity|float) }}</span><button name="action" value="plus" type="submit">+</button>
+          </form>
+          <span class="pos-price">{{ money(item.unit_price) }}</span>
+          <span class="pos-price">{{ money(item.total) }}</span>
+          <form method="post" action="{{ url_for('pos.update_quantity', item_id=item.id) }}" class="pos-remove-form">
+            <input type="hidden" name="quantity" value="0">
+            <button type="submit" title="Remover"><i class="bi bi-trash3-fill"></i></button>
+          </form>
+        </div>
+        {% else %}
+        <div class="pos-empty-order"><i class="bi bi-bag-plus"></i><span>Nenhum item no pedido ainda.</span></div>
+        {% endfor %}
+      </div>
+
+      <div class="pos-totals">
+        <div><span>Subtotal</span><b>{{ money(order.subtotal) }}</b></div>
+        <div><span>Taxa de Serviço (10%)</span><b>{{ money(service_preview) }}</b></div>
+        <div class="pos-total-box"><span>Total<small>{{ active_items|length }} itens</small></span><strong>{{ money(preview_total) }}</strong></div>
+      </div>
+
+      <form method="post" action="{{ url_for('pos.cancel_order', order_id=order.id) }}">
+        <button class="pos-btn-cancel" type="submit"><i class="bi bi-x-lg"></i> Cancelar Pedido</button>
+      </form>
+      <form method="post" action="{{ url_for('pos.send_kitchen', order_id=order.id) }}">
+        <button class="pos-btn-kitchen" type="submit"><i class="bi bi-basket2"></i> Enviar para Cozinha</button>
+      </form>
+      <div class="pos-info"><i class="bi bi-info-circle"></i> Após enviado, o pedido será exibido na cozinha.</div>
+      {% else %}
+      <div class="pos-order-empty-panel">
+        <i class="bi bi-receipt-cutoff"></i>
+        <h2>Nenhum pedido aberto</h2>
+        <p>Abra uma mesa ou inicie uma venda rápida para montar o pedido por aqui.</p>
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+</div>
 {% endblock %}
