@@ -1,19 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>Mesas</h1><p>Interface first-mobile para atendimento no salão.</p></div></div>
-<div class="tables-grid">
-{% for t in tables %}
-<a class="table-card status-{{ t.status|lower|replace(' ', '-') }}" href="{{ url_for('tables.detail', table_id=t.id) }}">
-  <div><small>Mesa</small><strong>{{ "%02d"|format(t.number) }}</strong></div>
-  <span class="badge status">{{ t.status }}</span>
-  {% if t.current_order_id and t.orders %}
-    {% set o = t.orders[-1] %}
-    <b>R$ {{ "%.2f"|format(o.total|float) }}</b>
-    <small>{{ o.created_at.strftime('%H:%M') }}</small>
-  {% else %}
-    <b>Disponível</b><small>toque para abrir</small>
-  {% endif %}
-</a>
-{% endfor %}
-</div>
+<section class="tables-page">
+  <div class="tables-head">
+    <div>
+      <h1>Mesas</h1>
+      <p>Interface first-mobile para atendimento no salão.</p>
+    </div>
+    <form method="post" action="{{ url_for('tables.create_table') }}">
+      <button class="btn-new-table" type="submit"><i class="bi bi-plus-lg"></i> Nova Mesa</button>
+    </form>
+  </div>
+
+  <div class="tables-grid tables-grid-operational">
+    {% for t in table_cards %}
+    <a class="table-card table-card-operational status-{{ t.status_class }}" href="{{ t.href }}">
+      <div class="table-card-top">
+        <small>Mesa</small>
+        <strong>{{ "%02d"|format(t.number) }}</strong>
+      </div>
+      <span class="table-status-pill">{{ t.status }}</span>
+      <div class="table-card-info">
+        <b>{{ t.main }}</b>{% if t.meta %}<span>{{ t.meta }}</span>{% endif %}
+      </div>
+      <small class="table-card-footer">{{ t.footer }}</small>
+    </a>
+    {% endfor %}
+  </div>
+</section>
 {% endblock %}
