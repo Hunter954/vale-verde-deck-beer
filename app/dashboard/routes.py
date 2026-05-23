@@ -83,7 +83,7 @@ def index():
     week_labels = []
     week_values = []
     total_period = Decimal("0")
-    for offset in range(7, -1, -1):
+    for offset in range(6, -1, -1):
         day = today - timedelta(days=offset)
         start = datetime.combine(day, datetime.min.time())
         end = start + timedelta(days=1)
@@ -112,10 +112,10 @@ def index():
     for method, amount in payments_today:
         total = amount or Decimal("0")
         payment_cards.append({
-            "method": method or "Outros",
+            "method": (method or "Outros").strip(),
             "total": _money(total),
             "percent": round((float(total) / float(paid_total) * 100), 1) if paid_total else 0,
-            "color": payment_palette.get(method or "Outros", "#8b5cf6"),
+            "color": payment_palette.get((method or "Outros").strip(), "#8b5cf6"),
         })
 
     if not payment_cards:
