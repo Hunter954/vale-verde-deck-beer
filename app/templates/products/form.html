@@ -1,26 +1,124 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>{{ "Editar" if product else "Novo" }} produto</h1><p>Configure preço, estoque, setor e alertas.</p></div></div>
-<form method="post" enctype="multipart/form-data" class="glass-card">
-<div class="row g-3">
-  <div class="col-md-6"><label>Nome</label><input class="form-control" name="name" required value="{{ product.name if product else '' }}"></div>
-  <div class="col-md-3"><label>Categoria</label><select class="form-select" name="category_id"><option value="">Selecione</option>{% for c in categories %}<option value="{{ c.id }}" {% if product and product.category_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-  <div class="col-md-3"><label>Setor preparo</label><select class="form-select" name="sector_id"><option value="">Selecione</option>{% for s in sectors %}<option value="{{ s.id }}" {% if product and product.sector_id==s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
-  <div class="col-md-3"><label>Preço venda</label><input class="form-control" type="number" step="0.01" name="price" value="{{ product.price if product else 0 }}"></div>
-  <div class="col-md-3"><label>Custo</label><input class="form-control" type="number" step="0.01" name="cost" value="{{ product.cost if product else 0 }}"></div>
-  <div class="col-md-3"><label>Estoque</label><input class="form-control" type="number" step="0.001" name="stock" value="{{ product.stock if product else 0 }}"></div>
-  <div class="col-md-3"><label>Estoque mínimo</label><input class="form-control" type="number" step="0.001" name="min_stock" value="{{ product.min_stock if product else 0 }}"></div>
-  <div class="col-md-3"><label>Código interno</label><input class="form-control" name="internal_code" value="{{ product.internal_code if product else '' }}"></div>
-  <div class="col-md-3"><label>Código barras</label><input class="form-control" name="barcode" value="{{ product.barcode if product else '' }}"></div>
-  <div class="col-md-3"><label>Tempo preparo min</label><input class="form-control" type="number" name="avg_prep_minutes" value="{{ product.avg_prep_minutes if product else 0 }}"></div>
-  <div class="col-md-3"><label>Imagem</label><input class="form-control" type="file" name="image"></div>
-  <div class="col-12"><label>Obs. preparo</label><textarea class="form-control" name="prep_note">{{ product.prep_note if product else '' }}</textarea></div>
-  <div class="col-12 d-flex gap-4 flex-wrap">
-    <label><input type="checkbox" name="active" {% if not product or product.active %}checked{% endif %}> Ativo</label>
-    <label><input type="checkbox" name="controlled" {% if product and product.controlled %}checked{% endif %}> Produto controlado</label>
-    <label><input type="checkbox" name="adult_warning" {% if product and product.adult_warning %}checked{% endif %}> Aviso maioridade</label>
+<section class="products-page product-form-page">
+  <div class="products-head">
+    <div>
+      <h1>{{ "Editar Produto" if product else "Novo Produto" }}</h1>
+      <p>Configure foto, categoria, preço, estoque e preparo.</p>
+    </div>
+    <a class="product-back-btn" href="{{ url_for('products.index') }}"><i class="bi bi-arrow-left"></i> Voltar</a>
   </div>
-</div>
-<button class="btn btn-neon mt-4">Salvar produto</button>
-</form>
+
+  <form method="post" enctype="multipart/form-data" class="product-form-card">
+    <div class="product-form-grid">
+      <div class="product-photo-panel">
+        <div class="product-photo-preview">
+          {% if product and product.image %}
+            <img id="previewImage" src="{{ product_image_url(product) }}" alt="{{ product.name }}" onerror="this.src='{{ url_for('static', filename='img/products/produto.svg') }}'">
+          {% else %}
+            <img id="previewImage" src="{{ url_for('static', filename='img/products/produto.svg') }}" alt="Produto">
+          {% endif %}
+        </div>
+        <label class="product-upload-btn">
+          <i class="bi bi-cloud-arrow-up"></i>
+          Escolher foto do produto
+          <input id="imageInput" type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif">
+        </label>
+        <small>PNG, JPG, WEBP ou GIF até 8MB. No Railway, o volume em <b>/app/uploads</b> está correto para manter as fotos persistentes.</small>
+      </div>
+
+      <div class="product-fields-panel">
+        <div class="product-field full">
+          <label>Nome do produto</label>
+          <input name="name" required value="{{ product.name if product else '' }}" placeholder="Ex: Coca-Cola">
+        </div>
+
+        <div class="product-field">
+          <label>Categoria</label>
+          <select name="category_id">
+            <option value="">Selecione</option>
+            {% for c in categories %}<option value="{{ c.id }}" {% if product and product.category_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <div class="product-field">
+          <label>Setor preparo</label>
+          <select name="sector_id">
+            <option value="">Sem setor</option>
+            {% for s in sectors %}<option value="{{ s.id }}" {% if product and product.sector_id==s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <div class="product-field">
+          <label>Preço venda</label>
+          <input type="number" step="0.01" min="0" name="price" value="{{ product.price if product else 0 }}">
+        </div>
+
+        <div class="product-field">
+          <label>Custo</label>
+          <input type="number" step="0.01" min="0" name="cost" value="{{ product.cost if product else 0 }}">
+        </div>
+
+        <div class="product-field">
+          <label>Estoque</label>
+          <input type="number" step="0.001" name="stock" value="{{ product.stock if product else 0 }}">
+        </div>
+
+        <div class="product-field">
+          <label>Estoque mínimo</label>
+          <input type="number" step="0.001" name="min_stock" value="{{ product.min_stock if product else 0 }}">
+        </div>
+
+        <div class="product-field">
+          <label>Código interno</label>
+          <input name="internal_code" value="{{ product.internal_code if product else '' }}" placeholder="Opcional">
+        </div>
+
+        <div class="product-field">
+          <label>Código de barras</label>
+          <input name="barcode" value="{{ product.barcode if product else '' }}" placeholder="Opcional">
+        </div>
+
+        <div class="product-field">
+          <label>Tempo preparo min</label>
+          <input type="number" min="0" name="avg_prep_minutes" value="{{ product.avg_prep_minutes if product else 0 }}">
+        </div>
+
+        <div class="product-field full">
+          <label>Observação de preparo</label>
+          <textarea name="prep_note" rows="3" placeholder="Ex: sem gelo, ponto da carne, observações internas...">{{ product.prep_note if product else '' }}</textarea>
+        </div>
+
+        <div class="product-switches full">
+          <label><input type="checkbox" name="active" {% if not product or product.active %}checked{% endif %}> <span>Produto ativo</span></label>
+          <label><input type="checkbox" name="controlled" {% if product and product.controlled %}checked{% endif %}> <span>Controlado</span></label>
+          <label><input type="checkbox" name="adult_warning" {% if product and product.adult_warning %}checked{% endif %}> <span>Aviso maioridade</span></label>
+        </div>
+
+        <div class="product-form-actions full">
+          <a href="{{ url_for('products.index') }}" class="product-cancel-btn">Cancelar</a>
+          <button class="product-save-btn" type="submit"><i class="bi bi-check2-circle"></i> Salvar Produto</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  const imageInput = document.getElementById('imageInput');
+  const previewImage = document.getElementById('previewImage');
+  if (imageInput && previewImage) {
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files && imageInput.files[0];
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) {
+        alert('A imagem precisa ter até 8MB.');
+        imageInput.value = '';
+        return;
+      }
+      previewImage.src = URL.createObjectURL(file);
+    });
+  }
+</script>
 {% endblock %}

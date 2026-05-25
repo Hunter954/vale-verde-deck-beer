@@ -1,20 +1,108 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>Produtos</h1><p>Cardápio, tabacaria, insumos e itens de preparo.</p></div><a class="btn btn-neon" href="{{ url_for('products.create') }}"><i class="bi bi-plus"></i> Novo produto</a></div>
-<form class="searchbar mb-3"><input name="q" value="{{ q }}" class="form-control" placeholder="Buscar produto, código ou categoria..."></form>
-<div class="glass-card table-responsive">
-<table class="table table-dark table-hover align-middle">
-<thead><tr><th>Produto</th><th>Categoria</th><th>Setor</th><th>Preço</th><th>Estoque</th><th>Status</th><th></th></tr></thead>
-<tbody>
-{% for p in products %}
-<tr>
-<td><div class="product-cell">{% if p.image %}<img src="{{ url_for('products.uploads', filename=p.image) }}">{% endif %}<span>{{ p.name }}</span></div></td>
-<td>{{ p.category.name if p.category else "-" }}</td><td>{{ p.sector.name if p.sector else "-" }}</td>
-<td>R$ {{ "%.2f"|format(p.price|float) }}</td>
-<td><span class="{% if p.stock <= p.min_stock %}text-warning{% endif %}">{{ p.stock }}</span></td>
-<td><span class="badge bg-{{ 'success' if p.active else 'secondary' }}">{{ "Ativo" if p.active else "Inativo" }}</span></td>
-<td><a href="{{ url_for('products.edit', id=p.id) }}" class="btn btn-sm btn-outline-light">Editar</a></td>
-</tr>
-{% endfor %}
-</tbody></table></div>
+<section class="products-page">
+  <div class="products-head">
+    <div>
+      <h1>Produtos</h1>
+      <p>Cadastre, organize e gerencie os itens do cardápio.</p>
+    </div>
+    <a class="product-new-btn" href="{{ url_for('products.create') }}">
+      <i class="bi bi-plus-lg"></i>
+      Novo Produto
+    </a>
+  </div>
+
+  <form class="products-filter-card" method="get" action="{{ url_for('products.index') }}">
+    <div class="products-search-box">
+      <i class="bi bi-search"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar produto..." autocomplete="off">
+    </div>
+    <input type="hidden" name="per_page" value="{{ per_page }}">
+    <div class="products-status-tabs">
+      <button class="product-status-tab {{ 'active' if status == 'all' else '' }}" name="status" value="all" type="submit">Todos</button>
+      <button class="product-status-tab {{ 'active' if status == 'active' else '' }}" name="status" value="active" type="submit">Ativo</button>
+      <button class="product-status-tab {{ 'active' if status == 'inactive' else '' }}" name="status" value="inactive" type="submit">Inativo</button>
+    </div>
+  </form>
+
+  <div class="products-table-card">
+    <div class="products-table-wrap">
+      <table class="products-table">
+        <thead>
+          <tr>
+            <th>Produto <i class="bi bi-chevron-expand"></i></th>
+            <th>Categoria <i class="bi bi-chevron-expand"></i></th>
+            <th>Preço <i class="bi bi-chevron-expand"></i></th>
+            <th>Estoque <i class="bi bi-chevron-expand"></i></th>
+            <th>Status <i class="bi bi-chevron-expand"></i></th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for p in products %}
+          <tr>
+            <td>
+              <div class="products-name-cell">
+                <img src="{{ product_image_url(p) }}" alt="{{ p.name }}" loading="lazy" onerror="this.src='{{ url_for('static', filename='img/products/produto.svg') }}'">
+                <strong>{{ p.name }}</strong>
+              </div>
+            </td>
+            <td>{{ p.category.name if p.category else '-' }}</td>
+            <td>R$ {{ "%.2f"|format(p.price|float)|replace('.', ',') }}</td>
+            <td>
+              <span class="{{ 'product-stock-low' if p.stock <= p.min_stock else '' }}">
+                {{ "%.0f"|format(p.stock|float) if (p.stock|float) == (p.stock|float)|round(0) else "%.3f"|format(p.stock|float)|replace('.', ',') }}
+              </span>
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('products.toggle', id=p.id) }}" class="d-inline">
+                <button class="product-active-pill {{ 'off' if not p.active else '' }}" type="submit" title="Clique para alternar status">
+                  <span></span>{{ 'Ativo' if p.active else 'Inativo' }}
+                </button>
+              </form>
+            </td>
+            <td>
+              <div class="product-actions">
+                <a href="{{ url_for('products.edit', id=p.id) }}" title="Editar"><i class="bi bi-pencil"></i></a>
+                <form method="post" action="{{ url_for('products.duplicate', id=p.id) }}">
+                  <button type="submit" title="Duplicar"><i class="bi bi-copy"></i></button>
+                </form>
+                <form method="post" action="{{ url_for('products.delete', id=p.id) }}" onsubmit="return confirm('Excluir este produto? Se ele já tiver histórico, será apenas inativado.');">
+                  <button type="submit" class="danger" title="Excluir"><i class="bi bi-trash3"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6">
+              <div class="products-empty">
+                <i class="bi bi-box-seam"></i>
+                <strong>Nenhum produto encontrado</strong>
+                <span>Cadastre um novo produto ou ajuste a busca/filtro.</span>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="products-footer">
+      <span>Mostrando {{ pagination.first or 0 }} a {{ pagination.last or 0 }} de {{ pagination.total }} produtos</span>
+      <div class="products-pager">
+        <a class="pager-btn {{ 'disabled' if not pagination.has_prev else '' }}" href="{{ url_for('products.index', q=q, status=status, per_page=per_page, page=pagination.prev_num) if pagination.has_prev else '#' }}"><i class="bi bi-chevron-left"></i></a>
+        <span class="pager-current">{{ pagination.page }}</span>
+        <a class="pager-btn {{ 'disabled' if not pagination.has_next else '' }}" href="{{ url_for('products.index', q=q, status=status, per_page=per_page, page=pagination.next_num) if pagination.has_next else '#' }}"><i class="bi bi-chevron-right"></i></a>
+        <form method="get" action="{{ url_for('products.index') }}" class="products-per-page">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="status" value="{{ status }}">
+          <select name="per_page" onchange="this.form.submit()">
+            {% for n in [8,10,15,20,50] %}<option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }} por página</option>{% endfor %}
+          </select>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}
