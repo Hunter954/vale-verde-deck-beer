@@ -1,4 +1,39 @@
 document.addEventListener("click", async (e) => {
+  const groupBtn = e.target.closest(".js-kds-order-status");
+  if (groupBtn) {
+    const card = groupBtn.closest(".kds-order-card");
+    const page = document.querySelector("#kds-page");
+    if (!card) return;
+    groupBtn.disabled = true;
+    const res = await fetch("/kds/api/order-status", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        order_id: card.dataset.orderId,
+        current_status: card.dataset.status,
+        status: groupBtn.dataset.status,
+        sector: page?.dataset.sector || "cozinha"
+      })
+    });
+    if (res.ok) window.location.reload();
+    else groupBtn.disabled = false;
+    return;
+  }
+
+  const deliverAll = e.target.closest(".js-kds-deliver-all");
+  if (deliverAll) {
+    const page = document.querySelector("#kds-page");
+    deliverAll.disabled = true;
+    const res = await fetch("/kds/api/mark-ready-delivered", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({sector: page?.dataset.sector || "cozinha"})
+    });
+    if (res.ok) window.location.reload();
+    else deliverAll.disabled = false;
+    return;
+  }
+
   const btn = e.target.closest(".js-status");
   if (!btn) return;
   const card = btn.closest(".kds-card");
@@ -16,21 +51,23 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-async function refreshKDS(){
-  const board = document.querySelector("#kds-board");
-  if(!board) return;
-  const sector = board.dataset.sector || "cozinha";
-  const res = await fetch(`/kds/api/items?sector=${sector}`);
-  if(!res.ok) return;
-  const items = await res.json();
-  board.innerHTML = items.map(i => `
-    <div class="kds-card" data-id="${i.id}">
-      <div class="d-flex justify-content-between"><strong>${i.table}</strong><span>${i.created_at}</span></div>
-      <h4>${i.quantity}x ${i.product}</h4>
-      <p>${i.note || "Sem observação"}</p>
-      <div class="btn-group w-100">
-        ${["Pendente","Em preparo","Pronto"].map(st => `<button class="btn btn-sm ${i.status===st?'btn-neon':'btn-outline-light'} js-status" data-status="${st}">${st}</button>`).join("")}
-      </div>
-    </div>`).join("");
+function refreshKDSTimers(){
+  const page = document.querySelector("#kds-page");
+  if(!page) return;
+  document.querySelectorAll(".kds-timer").forEach(timer => {
+    const text = timer.textContent.trim().match(/(\d+):(\d+)/);
+    if(!text) return;
+    let minutes = parseInt(text[1], 10);
+    let seconds = parseInt(text[2], 10) + 1;
+    if(seconds >= 60){ minutes += 1; seconds = 0; }
+    const formatted = `${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}`;
+    timer.innerHTML = `<i class="bi bi-clock"></i> ${formatted}`;
+    timer.classList.toggle("danger", minutes >= 15);
+    timer.classList.toggle("warn", minutes >= 8 && minutes < 15);
+    timer.classList.toggle("ok", minutes < 8);
+  });
 }
-setInterval(refreshKDS, 12000);
+setInterval(refreshKDSTimers, 1000);
+if (document.querySelector("#kds-page")) {
+  setInterval(() => window.location.reload(), 30000);
+}

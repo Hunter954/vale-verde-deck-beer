@@ -1,19 +1,101 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>KDS — Setores</h1><p>Cozinha, Bar e Narguilé atualizando sem recarregar.</p></div></div>
-<div class="sector-tabs mb-3">
-{% for s in sectors %}<a class="btn {{ 'btn-neon' if active_sector and active_sector.id==s.id else 'btn-outline-light' }}" href="{{ url_for('kitchen.index', sector=s.slug) }}">{{ s.name }}</a>{% endfor %}
-</div>
-<div id="kds-board" data-sector="{{ active_sector.slug if active_sector else 'cozinha' }}" class="kds-grid">
-{% for i in items %}
-<div class="kds-card" data-id="{{ i.id }}">
-  <div class="d-flex justify-content-between"><strong>{{ "Mesa %02d"|format(i.order.table.number) if i.order.table else i.order.type }}</strong><span>{{ i.created_at.strftime("%H:%M") }}</span></div>
-  <h4>{{ i.quantity }}x {{ i.product.name }}</h4>
-  <p>{{ i.note or "Sem observação" }}</p>
-  <div class="btn-group w-100">
-    {% for st in ["Pendente","Em preparo","Pronto"] %}<button class="btn btn-sm btn-outline-light js-status" data-status="{{ st }}">{{ st }}</button>{% endfor %}
+<div class="kds-page" id="kds-page" data-sector="{{ active_sector_slug }}">
+  <div class="kds-head">
+    <div>
+      <h1>KDS Setores</h1>
+      <p>Acompanhe os pedidos por setor em tempo real.</p>
+    </div>
   </div>
-</div>
-{% endfor %}
+
+  <div class="kds-sector-tabs" aria-label="Filtros de setor">
+    <a class="kds-tab {{ 'active' if active_sector_slug == 'todos' else '' }}" href="{{ url_for('kitchen.index', sector='todos') }}">Todos</a>
+    {% for s in sectors %}
+      <a class="kds-tab {{ 'active' if active_sector_slug == s.slug else '' }}" href="{{ url_for('kitchen.index', sector=s.slug) }}">{{ s.name }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="kds-layout">
+    {% for st in statuses %}
+      {% set meta = status_meta[st] %}
+      {% set cards = grouped[st] %}
+      <section class="kds-column kds-column-{{ meta.key }}">
+        <div class="kds-column-title">
+          <div><i class="bi {{ meta.icon }}"></i><strong>{{ meta.title }}</strong></div>
+          <span>{{ '%02d'|format(cards|length) }}</span>
+        </div>
+        <div class="kds-column-line"></div>
+
+        <div class="kds-card-list">
+          {% if cards %}
+            {% for card in cards %}
+              <article class="kds-order-card" data-order-id="{{ card.order_id }}" data-status="{{ st }}">
+                <div class="kds-order-top">
+                  <strong>{{ card.table }}</strong>
+                  <span class="kds-timer {{ 'danger' if card.minutes >= 15 else 'warn' if card.minutes >= 8 else 'ok' }}">
+                    <i class="bi bi-clock"></i> {{ card.timer }}
+                  </span>
+                </div>
+
+                <ul class="kds-items">
+                  {% for item in card.items %}
+                    <li><span>{{ fmt_qty(item.quantity) }}x</span> {{ item.product.name if item.product else 'Produto' }}</li>
+                  {% endfor %}
+                </ul>
+
+                <div class="kds-order-bottom">
+                  <b>{{ card.total_money }}</b>
+                  <small>Pedido {{ card.order_code }}</small>
+                </div>
+
+                <button class="kds-card-action js-kds-order-status" type="button" data-status="{{ card.next_status }}">
+                  {% if st == 'Pendente' %}<i class="bi bi-play-fill"></i> Enviar para preparo{% elif st == 'Em preparo' %}<i class="bi bi-check2-circle"></i> Marcar como pronto{% else %}<i class="bi bi-bag-check"></i> Marcar como entregue{% endif %}
+                </button>
+              </article>
+            {% endfor %}
+          {% else %}
+            <div class="kds-empty-column">
+              <i class="bi bi-check2-all"></i>
+              <span>Nenhum pedido aqui.</span>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    {% endfor %}
+
+    <aside class="kds-summary-panel">
+      <div class="kds-summary-title"><i class="bi bi-bar-chart-line"></i><strong>Resumo do Setor</strong></div>
+
+      <div class="kds-summary-card green">
+        <i class="bi bi-clipboard2-check"></i>
+        <span>Pedidos em fila</span>
+        <strong>{{ '%02d'|format(summary.queue) }}</strong>
+      </div>
+      <div class="kds-summary-card yellow">
+        <i class="bi bi-egg-fried"></i>
+        <span>Em preparo</span>
+        <strong>{{ '%02d'|format(summary.prep) }}</strong>
+      </div>
+      <div class="kds-summary-card green">
+        <i class="bi bi-check-circle"></i>
+        <span>Prontos para sair</span>
+        <strong>{{ '%02d'|format(summary.ready) }}</strong>
+      </div>
+      <div class="kds-summary-card blue">
+        <i class="bi bi-clock"></i>
+        <span>Tempo médio</span>
+        <strong>{{ summary.avg }} min</strong>
+      </div>
+      <div class="kds-summary-card green">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span>Última atualização</span>
+        <strong>Agora</strong>
+      </div>
+
+      <button class="kds-deliver-all js-kds-deliver-all" type="button"><i class="bi bi-check-circle"></i> Marcar todos como entregues</button>
+    </aside>
+  </div>
+
+  <div class="kds-footer-note"><i class="bi bi-info-circle"></i> Os tempos são calculados com base no horário do pedido.</div>
 </div>
 {% endblock %}
