@@ -1,8 +1,9 @@
-from datetime import datetime, date
+from datetime import date
 from decimal import Decimal
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from .extensions import db
+from .utils import br_now
 
 role_permissions = db.Table(
     "role_permissions",
@@ -11,8 +12,8 @@ role_permissions = db.Table(
 )
 
 class TimestampMixin:
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=br_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=br_now, onupdate=br_now, nullable=False)
 
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -191,7 +192,7 @@ class CashRegister(TimestampMixin, db.Model):
     opening_amount = db.Column(db.Numeric(12, 2), default=0)
     closing_amount = db.Column(db.Numeric(12, 2))
     status = db.Column(db.String(40), default="Aberto")
-    opened_at = db.Column(db.DateTime, default=datetime.utcnow)
+    opened_at = db.Column(db.DateTime, default=br_now)
     closed_at = db.Column(db.DateTime)
 
 class CashMovement(TimestampMixin, db.Model):

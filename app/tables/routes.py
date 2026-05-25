@@ -1,9 +1,9 @@
-from datetime import datetime
 from decimal import Decimal
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from ..extensions import db
 from ..models import Table, Order, Product
+from ..utils import br_now, money as br_money
 
 tables_bp = Blueprint("tables", __name__)
 
@@ -11,7 +11,7 @@ tables_bp = Blueprint("tables", __name__)
 def _minutes_opened(dt):
     if not dt:
         return 0
-    diff = datetime.utcnow() - dt
+    diff = br_now() - dt
     return max(0, int(diff.total_seconds() // 60))
 
 
@@ -28,8 +28,7 @@ def _opened_label(minutes):
 
 
 def _format_money(value):
-    value = Decimal(value or 0)
-    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return br_money(value)
 
 
 def _table_capacity(number):

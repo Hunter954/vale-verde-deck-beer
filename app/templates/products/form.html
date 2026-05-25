@@ -51,12 +51,12 @@
 
         <div class="product-field">
           <label>Preço venda</label>
-          <input type="number" step="0.01" min="0" name="price" value="{{ product.price if product else 0 }}">
+          <input type="text" inputmode="numeric" class="js-money-input" name="price" value="{{ money(product.price) if product else 'R$ 0,00' }}" placeholder="R$ 0,00">
         </div>
 
         <div class="product-field">
           <label>Custo</label>
-          <input type="number" step="0.01" min="0" name="cost" value="{{ product.cost if product else 0 }}">
+          <input type="text" inputmode="numeric" class="js-money-input" name="cost" value="{{ money(product.cost) if product else 'R$ 0,00' }}" placeholder="R$ 0,00">
         </div>
 
         <div class="product-field">

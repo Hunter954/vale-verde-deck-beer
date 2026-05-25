@@ -2,6 +2,7 @@ from flask import Flask
 from config import Config
 from .extensions import db, migrate, login_manager
 from .models import User
+from .utils import money, br_now
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -14,6 +15,14 @@ def create_app(config_class=Config):
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
+
+    @app.template_filter("money")
+    def money_filter(value):
+        return money(value)
+
+    @app.context_processor
+    def inject_global_helpers():
+        return {"money": money, "br_now": br_now}
 
     from .auth.routes import auth_bp
     from .dashboard.routes import dashboard_bp

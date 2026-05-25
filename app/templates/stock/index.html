@@ -7,7 +7,7 @@
 <select class="form-select mb-2" name="product_id">{% for p in products %}<option value="{{ p.id }}">{{ p.name }} — atual {{ p.stock }}</option>{% endfor %}</select>
 <select class="form-select mb-2" name="type"><option>Entrada</option><option>Saída</option><option>Ajuste</option><option>Perda</option><option>Consumo interno</option><option>Transferência</option></select>
 <input class="form-control mb-2" name="quantity" type="number" step="0.001" placeholder="Quantidade">
-<input class="form-control mb-2" name="unit_cost" type="number" step="0.01" placeholder="Custo unitário">
+<input class="form-control mb-2 js-money-input" name="unit_cost" type="text" inputmode="numeric" placeholder="Custo unitário">
 <input class="form-control mb-2" name="note" placeholder="Observação">
 <button class="btn btn-neon w-100">Registrar</button>
 </form></div></div>

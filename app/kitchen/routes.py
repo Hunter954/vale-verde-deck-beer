@@ -7,6 +7,7 @@ from flask_login import login_required
 
 from ..models import OrderItem, PreparationSector
 from ..extensions import db
+from ..utils import br_now, money as br_money
 
 kitchen_bp = Blueprint("kitchen", __name__)
 
@@ -19,8 +20,7 @@ STATUS_META = {
 
 
 def _money(value):
-    value = Decimal(value or 0)
-    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return br_money(value)
 
 
 def _fmt_qty(value):
@@ -33,7 +33,7 @@ def _fmt_qty(value):
 def _elapsed_parts(dt):
     if not dt:
         return 0, "00:00"
-    total = max(0, int((datetime.utcnow() - dt).total_seconds()))
+    total = max(0, int((br_now() - dt).total_seconds()))
     minutes = total // 60
     seconds = total % 60
     return minutes, f"{minutes:02d}:{seconds:02d}"
@@ -61,11 +61,11 @@ def _build_board(sector_slug="cozinha"):
 
     for status in KDS_STATUSES:
         status_groups = [(order_id, group) for (st, order_id), group in buckets.items() if st == status]
-        status_groups.sort(key=lambda pair: min((i.created_at for i in pair[1] if i.created_at), default=datetime.utcnow()))
+        status_groups.sort(key=lambda pair: min((i.created_at for i in pair[1] if i.created_at), default=br_now()))
         for order_id, group_items in status_groups:
             order = group_items[0].order
             table_title = f"Mesa {order.table.number:02d}" if order and order.table else (order.type if order else "Pedido")
-            oldest = min((i.created_at for i in group_items if i.created_at), default=datetime.utcnow())
+            oldest = min((i.created_at for i in group_items if i.created_at), default=br_now())
             minutes, timer = _elapsed_parts(oldest)
             total = sum((Decimal(i.total or 0) for i in group_items), Decimal("0"))
             grouped[status].append({

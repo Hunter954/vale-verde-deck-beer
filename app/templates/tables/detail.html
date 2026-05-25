@@ -15,7 +15,7 @@
   <div class="col-lg-7"><div class="glass-card">
     <h4>Adicionar produto</h4>
     <form method="post" action="{{ url_for('orders.add_item', order_id=order.id) }}" class="row g-2">
-      <div class="col-md-6"><select class="form-select" name="product_id">{% for p in products %}<option value="{{ p.id }}">{{ p.name }} — R$ {{ "%.2f"|format(p.price|float) }}</option>{% endfor %}</select></div>
+      <div class="col-md-6"><select class="form-select" name="product_id">{% for p in products %}<option value="{{ p.id }}">{{ p.name }} — {{ money(p.price) }}</option>{% endfor %}</select></div>
       <div class="col-md-2"><input class="form-control" type="number" step="0.001" name="quantity" value="1"></div>
       <div class="col-md-4"><input class="form-control" name="person_name" placeholder="Pessoa/cliente"></div>
       <div class="col-12"><input class="form-control" name="note" placeholder="Obs: sem cebola, gelo, essência..."></div>
@@ -23,7 +23,7 @@
     </form>
   </div></div>
   <div class="col-lg-5"><div class="glass-card sticky-card">
-    <h4>Resumo</h4><div class="total-big">R$ {{ "%.2f"|format(order.total|float) }}</div>
+    <h4>Resumo</h4><div class="total-big">{{ money(order.total) }}</div>
     <a class="btn btn-neon w-100" href="{{ url_for('pos.order', order_id=order.id) }}">Ir para fechamento</a>
   </div></div>
 </div>
@@ -32,7 +32,7 @@
 <thead><tr><th>Item</th><th>Qtd</th><th>Setor</th><th>Status</th><th>Total</th><th></th></tr></thead>
 <tbody>
 {% for i in order.items %}
-<tr><td>{{ i.product.name }}<small class="d-block text-muted">{{ i.note }}</small></td><td>{{ i.quantity }}</td><td>{{ i.sector.name if i.sector else '-' }}</td><td><span class="badge bg-info">{{ i.status }}</span></td><td>R$ {{ "%.2f"|format(i.total|float) }}</td>
+<tr><td>{{ i.product.name }}<small class="d-block text-muted">{{ i.note }}</small></td><td>{{ i.quantity }}</td><td>{{ i.sector.name if i.sector else '-' }}</td><td><span class="badge bg-info">{{ i.status }}</span></td><td>{{ money(i.total) }}</td>
 <td>{% if i.status != "Cancelado" %}<form method="post" action="{{ url_for('orders.cancel_item', item_id=i.id) }}" class="d-flex gap-1"><input name="reason" class="form-control form-control-sm" placeholder="Motivo"><button class="btn btn-sm btn-outline-danger">Cancelar</button></form>{% endif %}</td></tr>
 {% endfor %}
 </tbody></table></div>

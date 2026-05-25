@@ -7,6 +7,7 @@ from sqlalchemy import func
 
 from ..extensions import db
 from ..models import Order, Table, Product, Payment, OrderItem
+from ..utils import br_now
 
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -35,7 +36,7 @@ def _sum_closed_orders_between(start, end):
 @dashboard_bp.route("/")
 @login_required
 def index():
-    now = datetime.utcnow()
+    now = br_now()
     today = now.date()
     today_start = datetime.combine(today, datetime.min.time())
     tomorrow_start = today_start + timedelta(days=1)

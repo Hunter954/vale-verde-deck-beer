@@ -10,23 +10,13 @@ from werkzeug.utils import secure_filename
 
 from ..extensions import db
 from ..models import Product, ProductCategory, PreparationSector, StockMovement
+from ..utils import money_to_decimal
+from ..maintenance import normalize_legacy_product_prices_once
 
 products_bp = Blueprint("products", __name__)
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
-
-
-def money_to_decimal(value, default="0"):
-    if value is None:
-        value = default
-    value = str(value).strip().replace("R$", "").replace(".", "").replace(",", ".")
-    if value == "":
-        value = default
-    try:
-        return Decimal(value)
-    except (InvalidOperation, ValueError):
-        return Decimal(default)
 
 
 def number_to_decimal(value, default="0"):
@@ -82,7 +72,19 @@ def save_image(file):
 
 def product_image_url(product):
     if product and product.image:
-        return url_for("products.uploads", filename=product.image)
+        img = str(product.image).strip().replace("\\", "/")
+        if img.startswith(("http://", "https://")):
+            return img
+        if "/products/uploads/" in img:
+            return img
+        if img.startswith("/app/uploads/"):
+            img = img.split("/app/uploads/", 1)[1]
+        elif "/uploads/" in img:
+            img = img.split("/uploads/", 1)[1]
+        img = img.lstrip("/")
+        if not img.startswith("products/") and "." in img:
+            img = f"products/{img}"
+        return url_for("products.uploads", filename=img)
     return url_for("static", filename="img/products/produto.svg")
 
 
@@ -100,6 +102,7 @@ def file_too_large(error):
 @products_bp.route("/")
 @login_required
 def index():
+    normalize_legacy_product_prices_once(db, Product, current_app)
     q = (request.args.get("q") or "").strip()
     status = (request.args.get("status") or "all").lower()
     page = request.args.get("page", 1, type=int)

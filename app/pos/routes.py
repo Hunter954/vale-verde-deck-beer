@@ -1,25 +1,34 @@
-from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from ..extensions import db
 from ..models import Order, OrderItem, Product, ProductCategory, Payment, Table, CashRegister, CashMovement, CustomerDebt, StockMovement
+from ..utils import br_now, money as br_money, money_to_decimal
+from ..maintenance import normalize_legacy_product_prices_once
 
 pos_bp = Blueprint("pos", __name__)
 
 
 def _money(value):
-    value = Decimal(value or 0)
-    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return br_money(value)
 
 
 def _thumb_for_product(product):
     """Retorna imagem real do produto quando existir ou um SVG local por tipo."""
-    img = (product.image or "").strip()
+    img = (product.image or "").strip().replace("\\", "/")
     if img:
-        if img.startswith(("http://", "https://", "/")):
+        if img.startswith(("http://", "https://")):
             return img
-        return url_for("static", filename=img.lstrip("/"))
+        if "/products/uploads/" in img:
+            return img
+        if img.startswith("/app/uploads/"):
+            img = img.split("/app/uploads/", 1)[1]
+        elif "/uploads/" in img:
+            img = img.split("/uploads/", 1)[1]
+        img = img.lstrip("/")
+        if not img.startswith("products/") and "." in img:
+            img = f"products/{img}"
+        return url_for("products.uploads", filename=img)
 
     name = (product.name or "").lower()
     category = ((product.category.name if product.category else "") or "").lower()
@@ -70,6 +79,7 @@ def _refresh_order(order):
 @pos_bp.route("/")
 @login_required
 def index():
+    normalize_legacy_product_prices_once(db, Product, current_app)
     q = (request.args.get("q") or "").strip()
     selected_category = request.args.get("category", "todos")
     open_orders = Order.query.filter(~Order.status.in_(["Fechada", "Cancelada"])).order_by(Order.created_at.desc()).all()
@@ -223,7 +233,7 @@ def cancel_order(order_id):
             item.cancelled_reason = "Pedido cancelado pelo PDV"
             item.product.stock = Decimal(item.product.stock or 0) + Decimal(item.quantity or 0)
     order.status = "Cancelada"
-    order.closed_at = datetime.utcnow()
+    order.closed_at = br_now()
     order.closed_by = current_user
     if order.table:
         order.table.status = "Livre"
@@ -237,8 +247,8 @@ def cancel_order(order_id):
 @login_required
 def discount(order_id):
     order = Order.query.get_or_404(order_id)
-    order.discount = Decimal(request.form.get("discount") or 0)
-    order.service_fee = Decimal(request.form.get("service_fee") or 0)
+    order.discount = money_to_decimal(request.form.get("discount"))
+    order.service_fee = money_to_decimal(request.form.get("service_fee"))
     order.recalc()
     db.session.commit()
     flash("Totais atualizados.", "success")
@@ -249,7 +259,7 @@ def discount(order_id):
 @login_required
 def pay(order_id):
     order = Order.query.get_or_404(order_id)
-    amount = Decimal(request.form.get("amount") or 0)
+    amount = money_to_decimal(request.form.get("amount"))
     method = request.form.get("method")
     if amount <= 0:
         flash("Informe um valor válido.", "danger")
@@ -262,7 +272,7 @@ def pay(order_id):
     order.recalc()
     if paid >= order.total:
         order.status = "Fechada"
-        order.closed_at = datetime.utcnow()
+        order.closed_at = br_now()
         order.closed_by = current_user
         if order.table:
             order.table.status = "Livre"

@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from ..extensions import db
 from ..models import Customer, CustomerDebt
+from ..utils import money_to_decimal
 
 customers_bp = Blueprint("customers", __name__)
 
@@ -16,7 +17,7 @@ def index():
 @login_required
 def create():
     c = Customer(name=request.form["name"], phone=request.form.get("phone"), cpf=request.form.get("cpf"),
-                 notes=request.form.get("notes"), credit_limit=request.form.get("credit_limit") or 0,
+                 notes=request.form.get("notes"), credit_limit=money_to_decimal(request.form.get("credit_limit")),
                  blocked=bool(request.form.get("blocked")))
     db.session.add(c)
     db.session.commit()
@@ -27,7 +28,7 @@ def create():
 @login_required
 def debt():
     d = CustomerDebt(customer_id=request.form["customer_id"], description=request.form.get("description"),
-                     amount=request.form.get("amount") or 0, status="Aberto")
+                     amount=money_to_decimal(request.form.get("amount")), status="Aberto")
     db.session.add(d); db.session.commit()
     flash("Débito lançado.", "warning")
     return redirect(url_for("customers.index"))
@@ -36,7 +37,7 @@ def debt():
 @login_required
 def pay_debt(id):
     d = CustomerDebt.query.get_or_404(id)
-    d.paid_amount = (d.paid_amount or 0) + float(request.form.get("amount") or 0)
+    d.paid_amount = (d.paid_amount or 0) + money_to_decimal(request.form.get("amount"))
     if d.paid_amount >= d.amount:
         d.status = "Pago"
     db.session.commit()

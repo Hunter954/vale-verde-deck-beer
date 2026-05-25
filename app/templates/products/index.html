@@ -48,7 +48,7 @@
               </div>
             </td>
             <td>{{ p.category.name if p.category else '-' }}</td>
-            <td>R$ {{ "%.2f"|format(p.price|float)|replace('.', ',') }}</td>
+            <td>{{ money(p.price) }}</td>
             <td>
               <span class="{{ 'product-stock-low' if p.stock <= p.min_stock else '' }}">
                 {{ "%.0f"|format(p.stock|float) if (p.stock|float) == (p.stock|float)|round(0) else "%.3f"|format(p.stock|float)|replace('.', ',') }}

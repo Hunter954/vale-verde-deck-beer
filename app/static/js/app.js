@@ -71,3 +71,39 @@ setInterval(refreshKDSTimers, 1000);
 if (document.querySelector("#kds-page")) {
   setInterval(() => window.location.reload(), 30000);
 }
+
+function formatBRMoneyFromDigits(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (!digits) return "R$ 0,00";
+  const value = Number(digits) / 100;
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function setupMoneyInputs() {
+  document.querySelectorAll(".js-money-input").forEach((input) => {
+    if (input.dataset.moneyReady === "1") return;
+    input.dataset.moneyReady = "1";
+
+    const applyMask = () => {
+      input.value = formatBRMoneyFromDigits(input.value);
+    };
+
+    input.addEventListener("input", applyMask);
+    input.addEventListener("focus", () => input.select());
+    input.addEventListener("blur", applyMask);
+
+    if (input.value && !input.value.trim().startsWith("R$")) {
+      const hasDecimal = /[,.]/.test(input.value);
+      if (hasDecimal) {
+        const numeric = Number(String(input.value).replace(/\./g, "").replace(",", "."));
+        input.value = Number.isFinite(numeric)
+          ? numeric.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+          : formatBRMoneyFromDigits(input.value);
+      } else {
+        applyMask();
+      }
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", setupMoneyInputs);

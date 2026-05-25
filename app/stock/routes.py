@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from ..extensions import db
 from ..models import Product, StockMovement, Supplier
+from ..utils import money_to_decimal
 
 stock_bp = Blueprint("stock", __name__)
 
@@ -23,7 +24,7 @@ def movement():
         qty = -abs(qty)
     product.stock = (product.stock or 0) + qty
     db.session.add(StockMovement(product=product, type=mtype, quantity=qty,
-                                 unit_cost=request.form.get("unit_cost") or product.cost or 0,
+                                 unit_cost=money_to_decimal(request.form.get("unit_cost")) if request.form.get("unit_cost") else (product.cost or 0),
                                  note=request.form.get("note"), user=current_user))
     db.session.commit()
     flash("Movimentação registrada.", "success")
