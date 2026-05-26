@@ -2,7 +2,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from ..extensions import db
-from ..models import Order, OrderItem, Product, ProductCategory, Payment, Table, CashRegister, CashMovement, CustomerDebt, StockMovement
+from ..models import Order, OrderItem, Product, ProductCategory, Payment, Table, CashRegister, CashMovement, CustomerDebt, StockMovement, Settings
 from ..utils import br_now, money as br_money, money_to_decimal
 from ..maintenance import normalize_legacy_product_prices_once
 
@@ -11,6 +11,17 @@ pos_bp = Blueprint("pos", __name__)
 
 def _money(value):
     return br_money(value)
+
+
+def _service_fee_percent():
+    row = Settings.query.filter_by(key="service_fee_percent").first()
+    try:
+        value = Decimal(str(row.value if row and row.value is not None else "10").replace(",", "."))
+    except Exception:
+        value = Decimal("10")
+    if value < 0:
+        value = Decimal("0")
+    return value
 
 
 def _thumb_for_product(product):
@@ -105,7 +116,8 @@ def index():
     if order:
         active_items = [i for i in order.items if i.status != "Cancelado"]
         active_item_cards = [{"item": i, "thumb": _thumb_for_product(i.product)} for i in active_items]
-        service_preview = (Decimal(order.subtotal or 0) * Decimal("0.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        service_percent = _service_fee_percent()
+        service_preview = (Decimal(order.subtotal or 0) * service_percent / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         preview_total = Decimal(order.subtotal or 0) + service_preview
 
     return render_template(
@@ -121,6 +133,7 @@ def index():
         active_item_cards=active_item_cards,
         service_preview=service_preview,
         preview_total=preview_total,
+        service_fee_percent=_service_fee_percent(),
         money=_money,
     )
 

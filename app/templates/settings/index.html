@@ -1,8 +1,202 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>Configurações</h1><p>Funcionários, perfis e ajustes gerais.</p></div></div>
-<div class="row g-3"><div class="col-lg-4"><div class="glass-card"><h4>Novo funcionário</h4><form method="post" action="{{ url_for('settings.create_user') }}">
-<input class="form-control mb-2" name="name" placeholder="Nome" required><input class="form-control mb-2" name="email" type="email" placeholder="Email" required><input class="form-control mb-2" name="phone" placeholder="Telefone"><input class="form-control mb-2" name="password" placeholder="Senha inicial">
-<select class="form-select mb-2" name="role_id">{% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}</select><button class="btn btn-neon w-100">Criar</button></form></div></div>
-<div class="col-lg-8"><div class="glass-card table-responsive"><h4>Funcionários</h4><table class="table table-dark">{% for u in users %}<tr><td>{{ u.name }}</td><td>{{ u.email }}</td><td>{{ u.role.name if u.role else "-" }}</td><td>{{ "Ativo" if u.active else "Inativo" }}</td></tr>{% endfor %}</table></div></div></div>
+{% set s = settings_values %}
+<div class="settings-page">
+  <div class="settings-head">
+    <div>
+      <h1>Configurações</h1>
+      <p>Gerencie preferências do sistema, usuários e parâmetros gerais do ERP.</p>
+    </div>
+  </div>
+
+  <div class="settings-tabs" role="tablist">
+    <a href="{{ url_for('settings.index', tab='geral') }}" class="settings-tab {{ 'active' if active_tab == 'geral' else '' }}">Geral</a>
+    <a href="{{ url_for('settings.index', tab='usuarios') }}" class="settings-tab {{ 'active' if active_tab == 'usuarios' else '' }}">Usuários</a>
+    <a href="{{ url_for('settings.index', tab='permissoes') }}" class="settings-tab {{ 'active' if active_tab == 'permissoes' else '' }}">Permissões</a>
+    <a href="{{ url_for('settings.index', tab='impressoras') }}" class="settings-tab {{ 'active' if active_tab == 'impressoras' else '' }}">Impressoras</a>
+    <a href="{{ url_for('settings.index', tab='integracoes') }}" class="settings-tab {{ 'active' if active_tab == 'integracoes' else '' }}">Integrações</a>
+    <a href="{{ url_for('settings.index', tab='backup') }}" class="settings-tab {{ 'active' if active_tab == 'backup' else '' }}">Backup</a>
+  </div>
+
+  {% if active_tab == 'geral' %}
+  <div class="settings-grid">
+    <section class="settings-card settings-main-card">
+      <div class="settings-card-title"><i class="bi bi-gear"></i><h2>Configurações Gerais</h2></div>
+      <form method="post" action="{{ url_for('settings.save_general') }}" class="settings-form-grid">
+        <input type="hidden" name="tab" value="geral">
+        <label><span>Nome da Empresa</span><div class="settings-input"><i class="bi bi-building"></i><input name="company_name" value="{{ s.company_name }}" required></div></label>
+        <label><span>Nome do Administrador</span><div class="settings-input"><i class="bi bi-person"></i><input name="admin_name" value="{{ current_user.name or s.admin_name }}" required></div></label>
+        <label><span>E-mail</span><div class="settings-input"><i class="bi bi-envelope"></i><input type="email" name="company_email" value="{{ current_user.email or s.company_email }}"></div></label>
+        <label><span>Telefone</span><div class="settings-input"><i class="bi bi-telephone"></i><input name="company_phone" value="{{ current_user.phone or s.company_phone }}"></div></label>
+        <label><span>CNPJ</span><div class="settings-input"><i class="bi bi-clipboard2"></i><input name="company_cnpj" value="{{ s.company_cnpj }}" placeholder="12.345.678/0001-90"></div></label>
+        <label><span>Endereço</span><div class="settings-input"><i class="bi bi-geo-alt"></i><input name="company_address" value="{{ s.company_address }}" placeholder="Rua, número - bairro"></div></label>
+        <label><span>Cidade/UF</span><div class="settings-input"><i class="bi bi-pin-map"></i><input name="company_city_uf" value="{{ s.company_city_uf }}"></div></label>
+        <label><span>Moeda</span><div class="settings-input"><i class="bi bi-currency-dollar"></i><select name="currency"><option value="BRL" selected>R$ - Real</option></select></div></label>
+        <label><span>Fuso Horário</span><div class="settings-input"><i class="bi bi-clock"></i><select name="timezone"><option value="America/Sao_Paulo" {{ 'selected' if s.timezone == 'America/Sao_Paulo' else '' }}>Brasília (GMT-3)</option></select></div></label>
+        <label><span>Taxa de Serviço (%)</span><div class="settings-input"><i class="bi bi-percent"></i><input name="service_fee_percent" value="{{ s.service_fee_percent }}" inputmode="decimal"></div></label>
+        <label><span>Tema do Sistema</span><div class="settings-input"><i class="bi bi-palette"></i><select name="system_theme"><option value="dark" {{ 'selected' if s.system_theme == 'dark' else '' }}>Escuro</option><option value="light" {{ 'selected' if s.system_theme == 'light' else '' }}>Claro</option></select></div></label>
+        <label><span>Idioma</span><div class="settings-input"><i class="bi bi-globe"></i><select name="language"><option value="pt-BR" {{ 'selected' if s.language == 'pt-BR' else '' }}>Português (BR)</option></select></div></label>
+        <div class="settings-switch-row full">
+          <label class="settings-toggle"><input type="checkbox" name="two_factor_enabled" value="1" {{ 'checked' if s.two_factor_enabled == '1' else '' }}><span></span> Autenticação em 2 fatores</label>
+          <label class="settings-toggle"><input type="checkbox" name="email_alerts_enabled" value="1" {{ 'checked' if s.email_alerts_enabled != '0' else '' }}><span></span> Receber alertas por e-mail</label>
+        </div>
+        <div class="settings-actions full">
+          <a href="{{ url_for('settings.index') }}" class="settings-btn-secondary">Cancelar</a>
+          <button type="submit" class="settings-btn-primary"><i class="bi bi-floppy"></i> Salvar Alterações</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="settings-side-stack">
+      <section class="settings-card settings-security-card">
+        <div class="settings-card-title"><i class="bi bi-shield-lock"></i><h2>Segurança da Conta</h2></div>
+        <form method="post" action="{{ url_for('settings.update_password') }}" class="settings-password-form">
+          <label><span>Alterar Senha</span><div class="settings-input"><i class="bi bi-lock"></i><input type="password" name="current_password" placeholder="Senha Atual" autocomplete="current-password"></div></label>
+          <div class="settings-input"><i class="bi bi-lock"></i><input type="password" name="new_password" placeholder="Nova Senha" autocomplete="new-password"></div>
+          <div class="settings-input"><i class="bi bi-lock"></i><input type="password" name="confirm_password" placeholder="Confirmar Nova Senha" autocomplete="new-password"></div>
+          <button class="settings-btn-primary compact" type="submit"><i class="bi bi-lock"></i> Atualizar Senha</button>
+        </form>
+      </section>
+
+      <section class="settings-card settings-summary-card">
+        <div class="settings-card-title"><i class="bi bi-bar-chart-line"></i><h2>Resumo do Sistema</h2></div>
+        <div class="settings-summary-list">
+          <div><span><i class="bi bi-crown"></i> Plano Atual</span><b class="settings-pill-green">{{ summary.plan }}</b></div>
+          <div><span><i class="bi bi-people"></i> Usuários Ativos</span><b>{{ summary.users_active }}</b></div>
+          <div><span><i class="bi bi-cloud-arrow-up"></i> Último Backup</span><b>{{ summary.last_backup }}</b></div>
+          <div><span><i class="bi bi-code-slash"></i> Versão do Sistema</span><b>{{ summary.version }}</b></div>
+          <div><span><i class="bi bi-server"></i> Ambiente</span><b>{{ summary.environment }}</b></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+  {% endif %}
+
+  {% if active_tab == 'usuarios' %}
+  <div class="settings-grid users-grid">
+    <section class="settings-card">
+      <div class="settings-card-title"><i class="bi bi-person-plus"></i><h2>Novo Usuário</h2></div>
+      <form method="post" action="{{ url_for('settings.create_user') }}" class="settings-vertical-form">
+        <input type="hidden" name="active" value="1">
+        <label><span>Nome</span><div class="settings-input"><i class="bi bi-person"></i><input name="name" required></div></label>
+        <label><span>E-mail</span><div class="settings-input"><i class="bi bi-envelope"></i><input name="email" type="email" required></div></label>
+        <label><span>Telefone</span><div class="settings-input"><i class="bi bi-telephone"></i><input name="phone"></div></label>
+        <label><span>Senha inicial</span><div class="settings-input"><i class="bi bi-key"></i><input name="password" placeholder="123456 se vazio"></div></label>
+        <label><span>Perfil</span><div class="settings-input"><i class="bi bi-person-badge"></i><select name="role_id">{% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}</select></div></label>
+        <button class="settings-btn-primary w-100" type="submit"><i class="bi bi-plus-lg"></i> Criar Usuário</button>
+      </form>
+    </section>
+    <section class="settings-card settings-table-card">
+      <div class="settings-card-title"><i class="bi bi-people"></i><h2>Usuários do Sistema</h2></div>
+      <div class="settings-table-wrap">
+        <table class="settings-table">
+          <thead><tr><th>Usuário</th><th>Telefone</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+          {% for u in users %}
+            <tr>
+              <td><div class="settings-user-cell"><span>{{ (u.name or 'U')[:2].upper() }}</span><div><strong>{{ u.name }}</strong><small>{{ u.email }}</small></div></div></td>
+              <td>{{ u.phone or '-' }}</td>
+              <td>{{ u.role.name if u.role else '-' }}</td>
+              <td><span class="settings-status {{ 'ok' if u.active else 'off' }}">{{ 'Ativo' if u.active else 'Inativo' }}</span></td>
+              <td><button class="settings-action-btn" data-bs-toggle="modal" data-bs-target="#editUser{{ u.id }}"><i class="bi bi-pencil"></i></button></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  {% for u in users %}
+  <div class="modal fade" id="editUser{{ u.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content settings-modal">
+    <form method="post" action="{{ url_for('settings.update_user', user_id=u.id) }}">
+      <div class="modal-header"><h5 class="modal-title">Editar {{ u.name }}</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body settings-vertical-form">
+        <label><span>Nome</span><div class="settings-input"><input name="name" value="{{ u.name }}" required></div></label>
+        <label><span>E-mail</span><div class="settings-input"><input name="email" type="email" value="{{ u.email }}" required></div></label>
+        <label><span>Telefone</span><div class="settings-input"><input name="phone" value="{{ u.phone or '' }}"></div></label>
+        <label><span>Perfil</span><div class="settings-input"><select name="role_id">{% for r in roles %}<option value="{{ r.id }}" {{ 'selected' if u.role_id == r.id else '' }}>{{ r.name }}</option>{% endfor %}</select></div></label>
+        <label><span>Nova senha opcional</span><div class="settings-input"><input name="password" placeholder="Deixe vazio para manter"></div></label>
+        <label class="settings-toggle"><input type="checkbox" name="active" value="1" {{ 'checked' if u.active else '' }}><span></span> Usuário ativo</label>
+      </div>
+      <div class="modal-footer"><button type="button" class="settings-btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="settings-btn-primary">Salvar</button></div>
+    </form>
+  </div></div></div>
+  {% endfor %}
+  {% endif %}
+
+  {% if active_tab == 'permissoes' %}
+  <div class="settings-permissions-grid">
+    {% for role in roles %}
+    <section class="settings-card">
+      <div class="settings-card-title"><i class="bi bi-shield-check"></i><h2>{{ role.name }}</h2></div>
+      <form method="post" action="{{ url_for('settings.update_role_permissions', role_id=role.id) }}" class="settings-permission-list">
+        {% set role_codes = role.permissions|map(attribute='code')|list %}
+        {% for p in permissions %}
+          <label class="settings-check-row"><input type="checkbox" name="permissions" value="{{ p.code }}" {{ 'checked' if role.name == 'Admin' or p.code in role_codes else '' }} {{ 'disabled' if role.name == 'Admin' else '' }}><span>{{ p.description or p.code }}</span><small>{{ p.code }}</small></label>
+        {% endfor %}
+        <button class="settings-btn-primary" type="submit" {{ 'disabled' if role.name == 'Admin' else '' }}><i class="bi bi-floppy"></i> Salvar permissões</button>
+      </form>
+    </section>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if active_tab == 'impressoras' %}
+  <section class="settings-card settings-wide-card">
+    <div class="settings-card-title"><i class="bi bi-printer"></i><h2>Impressoras</h2></div>
+    <form method="post" action="{{ url_for('settings.save_printers') }}" class="settings-printer-grid">
+      {% set printers = [('printer_kitchen','Cozinha','Comandas dos pedidos de cozinha'),('printer_bar','Bar','Bebidas e balcão'),('printer_receipt','Recibo/Caixa','Comprovantes e fechamento')] %}
+      {% for prefix, title, desc in printers %}
+      <div class="settings-mini-card">
+        <div class="settings-mini-title"><i class="bi bi-printer"></i><div><strong>{{ title }}</strong><small>{{ desc }}</small></div></div>
+        <label class="settings-toggle"><input type="checkbox" name="{{ prefix }}_enabled" value="1" {{ 'checked' if s[prefix ~ '_enabled'] == '1' else '' }}><span></span> Ativar</label>
+        <div class="settings-input"><i class="bi bi-usb-symbol"></i><input name="{{ prefix }}_name" value="{{ s[prefix ~ '_name'] }}" placeholder="Nome da impressora"></div>
+      </div>
+      {% endfor %}
+      <div class="settings-actions full"><button class="settings-btn-primary"><i class="bi bi-floppy"></i> Salvar Impressoras</button></div>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if active_tab == 'integracoes' %}
+  <section class="settings-card settings-wide-card">
+    <div class="settings-card-title"><i class="bi bi-plug"></i><h2>Integrações</h2></div>
+    <form method="post" action="{{ url_for('settings.save_integrations') }}" class="settings-printer-grid">
+      {% set integrations = [('integration_whatsapp','WhatsApp','Alertas e atendimento'),('integration_ifood','iFood','Pedidos externos'),('integration_delivery','Delivery Próprio','Entregas e balcão online')] %}
+      {% for prefix, title, desc in integrations %}
+      <div class="settings-mini-card">
+        <div class="settings-mini-title"><i class="bi bi-link-45deg"></i><div><strong>{{ title }}</strong><small>{{ desc }}</small></div></div>
+        <label class="settings-toggle"><input type="checkbox" name="{{ prefix }}_enabled" value="1" {{ 'checked' if s[prefix ~ '_enabled'] == '1' else '' }}><span></span> Ativar integração</label>
+        <div class="settings-input"><i class="bi bi-key"></i><input name="{{ prefix }}_token" value="{{ s.get(prefix ~ '_token','') }}" placeholder="Token/chave de API"></div>
+      </div>
+      {% endfor %}
+      <div class="settings-actions full"><button class="settings-btn-primary"><i class="bi bi-floppy"></i> Salvar Integrações</button></div>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if active_tab == 'backup' %}
+  <div class="settings-grid backup-grid">
+    <section class="settings-card">
+      <div class="settings-card-title"><i class="bi bi-cloud-arrow-up"></i><h2>Backup</h2></div>
+      <form method="post" action="{{ url_for('settings.save_backup_settings') }}" class="settings-vertical-form">
+        <label class="settings-toggle"><input type="checkbox" name="backup_auto_enabled" value="1" {{ 'checked' if s.backup_auto_enabled == '1' else '' }}><span></span> Backup automático</label>
+        <label><span>Frequência</span><div class="settings-input"><i class="bi bi-calendar2-week"></i><select name="backup_frequency"><option value="daily" {{ 'selected' if s.backup_frequency == 'daily' else '' }}>Diário</option><option value="weekly" {{ 'selected' if s.backup_frequency == 'weekly' else '' }}>Semanal</option><option value="monthly" {{ 'selected' if s.backup_frequency == 'monthly' else '' }}>Mensal</option></select></div></label>
+        <button class="settings-btn-primary"><i class="bi bi-floppy"></i> Salvar Preferências</button>
+      </form>
+    </section>
+    <section class="settings-card">
+      <div class="settings-card-title"><i class="bi bi-download"></i><h2>Exportar Backup</h2></div>
+      <p class="settings-help">Gera um arquivo JSON com configurações, usuários, perfis e resumo do sistema. Útil para conferência e restauração manual.</p>
+      <a class="settings-btn-primary settings-download" href="{{ url_for('settings.download_backup') }}"><i class="bi bi-download"></i> Baixar Backup Agora</a>
+      <div class="settings-summary-list mt-3">
+        <div><span>Produtos</span><b>{{ summary.products }}</b></div>
+        <div><span>Clientes</span><b>{{ summary.customers }}</b></div>
+        <div><span>Mesas</span><b>{{ summary.tables }}</b></div>
+        <div><span>Pedidos</span><b>{{ summary.orders }}</b></div>
+      </div>
+    </section>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

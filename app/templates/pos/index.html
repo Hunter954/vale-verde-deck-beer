@@ -110,7 +110,7 @@
 
       <div class="pos-totals">
         <div><span>Subtotal</span><b>{{ money(order.subtotal) }}</b></div>
-        <div><span>Taxa de Serviço (10%)</span><b>{{ money(service_preview) }}</b></div>
+        <div><span>Taxa de Serviço ({{ '%g'|format(service_fee_percent|float) }}%)</span><b>{{ money(service_preview) }}</b></div>
         <div class="pos-total-box"><span>Total<small>{{ active_items|length }} itens</small></span><strong>{{ money(preview_total) }}</strong></div>
       </div>
 
