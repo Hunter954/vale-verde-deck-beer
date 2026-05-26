@@ -124,6 +124,7 @@ def _payment_rows(start_date, end_date, total):
 
     rows = (
         db.session.query(Payment.method, func.coalesce(func.sum(Payment.amount), 0))
+        .select_from(Payment)
         .join(Order, Payment.order_id == Order.id)
         .filter(
             Order.status == "Fechada",
@@ -163,6 +164,7 @@ def _top_products(start_date, end_date, limit=5):
             func.coalesce(func.sum(OrderItem.quantity), 0).label("qty"),
             func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
         )
+        .select_from(Product)
         .join(OrderItem, OrderItem.product_id == Product.id)
         .join(Order, Order.id == OrderItem.order_id)
         .filter(
@@ -201,6 +203,7 @@ def _category_rows(start_date, end_date, period_total):
             func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
             func.count(func.distinct(Order.id)).label("orders_count"),
         )
+        .select_from(Product)
         .join(OrderItem, OrderItem.product_id == Product.id)
         .join(Order, Order.id == OrderItem.order_id)
         .outerjoin(ProductCategory, Product.category_id == ProductCategory.id)
