@@ -1,11 +1,208 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>Clientes / Fiado</h1><p>Cadastro, limite, bloqueio e contas a receber.</p></div></div>
-<div class="row g-3">
-<div class="col-lg-4"><div class="glass-card"><h4>Novo cliente</h4><form method="post" action="{{ url_for('customers.create') }}">
-<input class="form-control mb-2" name="name" required placeholder="Nome"><input class="form-control mb-2" name="phone" placeholder="Telefone"><input class="form-control mb-2" name="cpf" placeholder="CPF"><input class="form-control mb-2 js-money-input" type="text" inputmode="numeric" name="credit_limit" placeholder="Limite fiado"><textarea class="form-control mb-2" name="notes" placeholder="Observações"></textarea><button class="btn btn-neon w-100">Salvar</button>
-</form></div></div>
-<div class="col-lg-8"><div class="glass-card table-responsive"><h4>Dívidas em aberto</h4><table class="table table-dark">{% for d in debts %}<tr><td>{{ d.customer.name }}</td><td>{{ d.description }}</td><td>{{ money(d.amount) }}</td><td><form method="post" action="{{ url_for('customers.pay_debt', id=d.id) }}" class="d-flex gap-1"><input class="form-control form-control-sm js-money-input" inputmode="numeric" name="amount" placeholder="R$ 0,00"><button class="btn btn-sm btn-neon">Abater</button></form></td></tr>{% endfor %}</table></div></div>
+{% macro customers_url(page=None, status_value=None, per_page_value=None) -%}
+  {{ url_for('customers.index', q=q, status=status if status_value is none else status_value, page=page or 1, per_page=per_page if per_page_value is none else per_page_value) }}
+{%- endmacro %}
+
+<section class="customers-page">
+  <div class="customers-head">
+    <div>
+      <h1>Clientes / Fiado</h1>
+      <p>Gerencie clientes, limites, compras e valores em aberto.</p>
+    </div>
+    <button class="customer-new-btn" type="button" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
+      <i class="bi bi-plus-lg"></i>
+      Novo Cliente
+    </button>
+  </div>
+
+  <div class="customers-kpi-grid">
+    <div class="customers-kpi normal">
+      <div class="customers-kpi-icon"><i class="bi bi-people"></i></div>
+      <div><span>Clientes Cadastrados</span><strong>{{ total_count }}</strong><small>Total de clientes</small></div>
+    </div>
+    <div class="customers-kpi normal">
+      <div class="customers-kpi-icon"><i class="bi bi-person-check"></i></div>
+      <div><span>Com Fiado Ativo</span><strong>{{ with_debt_count }}</strong><small>Clientes com saldo</small></div>
+    </div>
+    <div class="customers-kpi normal">
+      <div class="customers-kpi-icon"><i class="bi bi-currency-dollar"></i></div>
+      <div><span>Total em Aberto</span><strong>{{ money(total_balance) }}</strong><small>Somatório de saldos</small></div>
+    </div>
+    <div class="customers-kpi danger">
+      <div class="customers-kpi-icon"><i class="bi bi-calendar-x"></i></div>
+      <div><span>Vencidos</span><strong>{{ '%02d' % overdue_count }}</strong><small>Clientes com atraso</small></div>
+    </div>
+  </div>
+
+  <form class="customers-filter-card" method="get" action="{{ url_for('customers.index') }}">
+    <div class="customers-search-box">
+      <i class="bi bi-search"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar cliente..." autocomplete="off">
+    </div>
+    <div class="customers-status-tabs">
+      <a class="customer-status-tab {{ 'active' if status == 'all' else '' }}" href="{{ customers_url(status_value='all', page=1) }}">Todos</a>
+      <a class="customer-status-tab {{ 'active' if status == 'with_debt' else '' }}" href="{{ customers_url(status_value='with_debt', page=1) }}">Com Fiado</a>
+      <a class="customer-status-tab {{ 'active' if status == 'current' else '' }}" href="{{ customers_url(status_value='current', page=1) }}">Em Dia</a>
+      <a class="customer-status-tab {{ 'active' if status == 'overdue' else '' }}" href="{{ customers_url(status_value='overdue', page=1) }}">Vencidos</a>
+    </div>
+    <input type="hidden" name="status" value="{{ status }}">
+    <input type="hidden" name="per_page" value="{{ per_page }}">
+  </form>
+
+  <div class="customers-table-card">
+    <div class="customers-table-wrap">
+      <table class="customers-table">
+        <thead>
+          <tr>
+            <th>Cliente <i class="bi bi-arrow-down-up"></i></th>
+            <th>Telefone <i class="bi bi-arrow-down-up"></i></th>
+            <th>Limite <i class="bi bi-arrow-down-up"></i></th>
+            <th>Saldo Devedor <i class="bi bi-arrow-down-up"></i></th>
+            <th>Última Compra <i class="bi bi-arrow-down-up"></i></th>
+            <th>Status <i class="bi bi-arrow-down-up"></i></th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in customers %}
+          <tr>
+            <td>
+              <div class="customer-name-cell">
+                <span class="customer-avatar status-{{ c.fiado_status }}">{{ c.initials }}</span>
+                <strong>{{ c.name }}</strong>
+              </div>
+            </td>
+            <td>{{ c.phone or '-' }}</td>
+            <td>{{ money(c.credit_limit) }}</td>
+            <td>{{ money(c.fiado_balance) }}</td>
+            <td>{{ c.last_purchase_date.strftime('%d/%m/%Y') if c.last_purchase_date else '-' }}</td>
+            <td><span class="customer-state {{ c.fiado_status }}"><i></i>{{ c.fiado_label }}</span></td>
+            <td>
+              <div class="customer-actions">
+                <button type="button" data-bs-toggle="modal" data-bs-target="#viewCustomer{{ c.id }}" title="Visualizar"><i class="bi bi-eye"></i></button>
+                <button type="button" data-bs-toggle="modal" data-bs-target="#editCustomer{{ c.id }}" title="Editar"><i class="bi bi-pencil"></i></button>
+                <button type="button" data-bs-toggle="modal" data-bs-target="#debtCustomer{{ c.id }}" title="Lançar/abater fiado"><i class="bi bi-currency-dollar"></i></button>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7"><div class="customers-empty"><i class="bi bi-people"></i><strong>Nenhum cliente encontrado</strong><span>Use a busca, altere os filtros ou cadastre um novo cliente.</span></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="customers-footer">
+      <span>
+        {% if pagination.total %}
+          Mostrando {{ ((pagination.page - 1) * pagination.per_page) + 1 }} a {{ ((pagination.page - 1) * pagination.per_page) + customers|length }} de {{ pagination.total }} clientes
+        {% else %}
+          Mostrando 0 clientes
+        {% endif %}
+      </span>
+      <div class="customers-footer-actions">
+        <div class="customers-pager">
+          <a class="pager-btn {{ 'disabled' if not pagination.has_prev else '' }}" href="{{ customers_url(page=pagination.prev_num) }}"><i class="bi bi-chevron-left"></i></a>
+          <span class="pager-current">{{ pagination.page }}</span>
+          <a class="pager-btn {{ 'disabled' if not pagination.has_next else '' }}" href="{{ customers_url(page=pagination.next_num) }}"><i class="bi bi-chevron-right"></i></a>
+        </div>
+        <form class="customers-per-page" method="get" action="{{ url_for('customers.index') }}">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="status" value="{{ status }}">
+          <select name="per_page" onchange="this.form.submit()">
+            {% for size in [6, 10, 15, 20, 50] %}
+              <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }} por página</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal fade operational-modal" id="newCustomerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('customers.create') }}">
+      <div class="modal-header"><h5>Novo Cliente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body customer-form-grid">
+        <label>Nome<input name="name" required placeholder="Nome do cliente"></label>
+        <label>Telefone<input name="phone" placeholder="(45) 99999-9999"></label>
+        <label>CPF<input name="cpf" placeholder="000.000.000-00"></label>
+        <label>Data de nascimento<input type="date" name="birthdate"></label>
+        <label>Limite de fiado<input class="js-money-input" name="credit_limit" inputmode="numeric" placeholder="R$ 0,00"></label>
+        <label class="customer-switch"><input type="checkbox" name="blocked"> Bloquear fiado</label>
+        <label class="full">Observações<textarea name="notes" placeholder="Observações internas"></textarea></label>
+      </div>
+      <div class="modal-footer"><button type="button" class="modal-cancel-btn" data-bs-dismiss="modal">Cancelar</button><button class="modal-save-btn">Salvar Cliente</button></div>
+    </form>
+  </div>
 </div>
-<div class="glass-card mt-3 table-responsive"><h4>Clientes</h4><table class="table table-dark">{% for c in customers %}<tr><td>{{ c.name }}</td><td>{{ c.phone }}</td><td>Limite {{ money(c.credit_limit) }}</td><td>{{ "Bloqueado" if c.blocked else "Ativo" }}</td></tr>{% endfor %}</table></div>
+
+{% for c in customers %}
+<div class="modal fade operational-modal" id="viewCustomer{{ c.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5>{{ c.name }}</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="customer-view-grid">
+          <div><span>Telefone</span><strong>{{ c.phone or '-' }}</strong></div>
+          <div><span>Limite</span><strong>{{ money(c.credit_limit) }}</strong></div>
+          <div><span>Saldo Devedor</span><strong>{{ money(c.fiado_balance) }}</strong></div>
+          <div><span>Status</span><strong>{{ c.fiado_label }}</strong></div>
+        </div>
+        <div class="customer-debt-list">
+          <h6>Dívidas em aberto</h6>
+          {% for d in c.open_debts %}
+            <div class="customer-debt-row"><span>{{ d.description or 'Compra fiado' }}{% if d.due_date %}<small> vence {{ d.due_date.strftime('%d/%m/%Y') }}</small>{% endif %}</span><strong>{{ money(d.amount - (d.paid_amount or 0)) }}</strong></div>
+          {% else %}
+            <div class="customer-debt-row muted"><span>Nenhum saldo em aberto.</span><strong>{{ money(0) }}</strong></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade operational-modal" id="editCustomer{{ c.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('customers.update', id=c.id) }}">
+      <div class="modal-header"><h5>Editar Cliente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body customer-form-grid">
+        <label>Nome<input name="name" required value="{{ c.name }}"></label>
+        <label>Telefone<input name="phone" value="{{ c.phone or '' }}"></label>
+        <label>CPF<input name="cpf" value="{{ c.cpf or '' }}"></label>
+        <label>Data de nascimento<input type="date" name="birthdate" value="{{ c.birthdate.isoformat() if c.birthdate else '' }}"></label>
+        <label>Limite de fiado<input class="js-money-input" name="credit_limit" inputmode="numeric" value="{{ money(c.credit_limit) }}"></label>
+        <label class="customer-switch"><input type="checkbox" name="blocked" {% if c.blocked %}checked{% endif %}> Bloquear fiado</label>
+        <label class="full">Observações<textarea name="notes">{{ c.notes or '' }}</textarea></label>
+      </div>
+      <div class="modal-footer"><button type="button" class="modal-cancel-btn" data-bs-dismiss="modal">Cancelar</button><button class="modal-save-btn">Salvar Alterações</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade operational-modal" id="debtCustomer{{ c.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5>Fiado — {{ c.name }}</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body debt-actions-grid">
+        <form method="post" action="{{ url_for('customers.customer_debt', id=c.id) }}" class="debt-action-card">
+          <h6>Lançar compra no fiado</h6>
+          <input name="description" placeholder="Descrição" value="Compra fiado">
+          <input class="js-money-input" name="amount" inputmode="numeric" placeholder="R$ 0,00" required>
+          <input type="date" name="due_date">
+          <button class="modal-save-btn w-100">Lançar Débito</button>
+        </form>
+        <form method="post" action="{{ url_for('customers.pay_customer', id=c.id) }}" class="debt-action-card">
+          <h6>Abater pagamento</h6>
+          <p>Saldo atual: <b>{{ money(c.fiado_balance) }}</b></p>
+          <input class="js-money-input" name="amount" inputmode="numeric" placeholder="R$ 0,00" required>
+          <button class="modal-save-btn w-100">Registrar Pagamento</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
 {% endblock %}
