@@ -1,7 +1,241 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>Relatórios</h1><p>Vendas, pagamentos, produtos, estoque e fiado.</p></div></div>
-<form class="glass-card row g-2 mb-3"><div class="col-md-3"><input class="form-control" type="date" name="start"></div><div class="col-md-3"><input class="form-control" type="date" name="end"></div><div class="col-md-2"><button class="btn btn-neon w-100">Filtrar</button></div></form>
-<div class="row g-3"><div class="col-md-4"><div class="metric-card"><span>Total período</span><strong>{{ money(total) }}</strong></div></div><div class="col-md-4"><div class="metric-card"><span>Pedidos fechados</span><strong>{{ orders|length }}</strong></div></div><div class="col-md-4"><div class="metric-card"><span>Dívidas abertas</span><strong>{{ debts|length }}</strong></div></div></div>
-<div class="row g-3 mt-1"><div class="col-lg-6"><div class="glass-card"><h4>Pagamentos</h4>{% for m,t in by_payment %}<div class="summary-line"><span>{{ m }}</span><b>{{ money(t) }}</b></div>{% endfor %}</div></div><div class="col-lg-6"><div class="glass-card"><h4>Produtos vendidos</h4>{% for name,qty,total in by_category %}<div class="summary-line"><span>{{ name }} — {{ qty }}</span><b>{{ money(total) }}</b></div>{% endfor %}</div></div></div>
+<div class="reports-page">
+  <div class="reports-head">
+    <div>
+      <h1>Relatórios</h1>
+      <p>Acompanhe o desempenho do negócio com métricas e análises detalhadas.</p>
+    </div>
+  </div>
+
+  <form class="reports-filter-bar" method="get">
+    <label class="reports-date-input">
+      <i class="bi bi-calendar-event"></i>
+      <input type="date" name="start" value="{{ start_date.strftime('%Y-%m-%d') }}">
+    </label>
+
+    <span class="reports-filter-sep">até</span>
+
+    <label class="reports-date-input">
+      <i class="bi bi-calendar-event"></i>
+      <input type="date" name="end" value="{{ end_date.strftime('%Y-%m-%d') }}">
+    </label>
+
+    <span class="reports-period-pill">Período: {{ period_label }}</span>
+
+    <div class="reports-filter-actions">
+      <button class="reports-outline-btn" type="submit">
+        <i class="bi bi-funnel"></i>
+        Filtros
+      </button>
+      <a class="reports-export-btn" href="{{ url_for('reports.index', start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'), export='csv') }}">
+        <i class="bi bi-download"></i>
+        Exportar
+        <i class="bi bi-chevron-down"></i>
+      </a>
+    </div>
+  </form>
+
+  <section class="reports-kpi-grid">
+    <article class="reports-kpi-card">
+      <div class="reports-kpi-icon"><i class="bi bi-currency-dollar"></i></div>
+      <div>
+        <span>Faturamento <i class="bi bi-info-circle"></i></span>
+        <strong>{{ money(period.total) }}</strong>
+        <small class="{{ 'is-good' if kpis.revenue_pct >= 0 else 'is-bad' }}">
+          <i class="bi bi-arrow-{{ 'up' if kpis.revenue_pct >= 0 else 'down' }}"></i>
+          {{ kpis.revenue_pct|abs }}% vs. período anterior
+        </small>
+      </div>
+    </article>
+
+    <article class="reports-kpi-card">
+      <div class="reports-kpi-icon"><i class="bi bi-calendar-check"></i></div>
+      <div>
+        <span>Pedidos <i class="bi bi-info-circle"></i></span>
+        <strong>{{ period.count }}</strong>
+        <small class="{{ 'is-good' if kpis.orders_pct >= 0 else 'is-bad' }}">
+          <i class="bi bi-arrow-{{ 'up' if kpis.orders_pct >= 0 else 'down' }}"></i>
+          {{ kpis.orders_pct|abs }}% vs. período anterior
+        </small>
+      </div>
+    </article>
+
+    <article class="reports-kpi-card">
+      <div class="reports-kpi-icon"><i class="bi bi-ticket-perforated"></i></div>
+      <div>
+        <span>Ticket Médio <i class="bi bi-info-circle"></i></span>
+        <strong>{{ money(period.ticket) }}</strong>
+        <small class="{{ 'is-good' if kpis.ticket_pct >= 0 else 'is-bad' }}">
+          <i class="bi bi-arrow-{{ 'up' if kpis.ticket_pct >= 0 else 'down' }}"></i>
+          {{ kpis.ticket_pct|abs }}% vs. período anterior
+        </small>
+      </div>
+    </article>
+
+    <article class="reports-kpi-card">
+      <div class="reports-kpi-icon"><i class="bi bi-people"></i></div>
+      <div>
+        <span>Clientes <i class="bi bi-info-circle"></i></span>
+        <strong>{{ period.clients }}</strong>
+        <small class="{{ 'is-good' if kpis.clients_pct >= 0 else 'is-bad' }}">
+          <i class="bi bi-arrow-{{ 'up' if kpis.clients_pct >= 0 else 'down' }}"></i>
+          {{ kpis.clients_pct|abs }}% vs. período anterior
+        </small>
+      </div>
+    </article>
+  </section>
+
+  <section class="reports-main-grid">
+    <article class="reports-panel reports-daily-panel">
+      <div class="reports-panel-title">
+        <h2>Faturamento por dia <i class="bi bi-info-circle"></i></h2>
+        <button type="button"><i class="bi bi-three-dots-vertical"></i></button>
+      </div>
+
+      <div class="reports-bar-chart" aria-label="Faturamento por dia">
+        {% for day in daily_rows %}
+          <div class="reports-bar-item" title="{{ day.date }} — {{ money(day.amount) }}">
+            <span class="reports-bar-value">{{ money(day.amount) }}</span>
+            <i style="height: {{ 4 + (day.height * 0.88)|round(0, 'floor') }}%;"></i>
+            <b>{{ day.label }}</b>
+          </div>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="reports-panel">
+      <div class="reports-panel-title">
+        <h2>Formas de pagamento <i class="bi bi-info-circle"></i></h2>
+        <button type="button"><i class="bi bi-three-dots-vertical"></i></button>
+      </div>
+
+      {% set ns = namespace(start=0) %}
+      {% set colors = ['#00c96f', '#2f8fff', '#ffc226', '#cfd8dc', '#8b5cf6'] %}
+      <div class="reports-payment-layout">
+        <div
+          class="reports-donut"
+          style="{% if payment_rows %}background: conic-gradient(
+            {% for row in payment_rows %}
+              {{ colors[loop.index0 % colors|length] }} {{ ns.start }}% {{ ns.start + row.percent|float }}%{{ ',' if not loop.last }}
+              {% set ns.start = ns.start + row.percent|float %}
+            {% endfor %}
+          );{% else %}background:rgba(255,255,255,.06);{% endif %}"
+        >
+          <div>
+            <strong>{{ money(period.total) }}</strong>
+            <span>Total</span>
+          </div>
+        </div>
+
+        <div class="reports-payment-list">
+          {% for row in payment_rows %}
+            <div>
+              <span><i style="background:{{ colors[loop.index0 % colors|length] }}"></i>{{ row.method }}</span>
+              <b>{{ row.percent }}%</b>
+            </div>
+          {% else %}
+            <p class="reports-empty">Nenhum pagamento no período.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <small class="reports-card-note">Valores calculados com base nos pedidos fechados <i class="bi bi-info-circle"></i></small>
+    </article>
+
+    <article class="reports-panel">
+      <div class="reports-panel-title">
+        <h2>Top Produtos <i class="bi bi-info-circle"></i></h2>
+        <button type="button"><i class="bi bi-three-dots-vertical"></i></button>
+      </div>
+
+      <div class="reports-rank-table">
+        <div class="reports-rank-head">
+          <span>#</span><span>Produto</span><span>Faturamento</span><span>%</span>
+        </div>
+        {% for product in top_products %}
+          <div class="reports-rank-row">
+            <span>{{ product.rank }}</span>
+            <strong>{{ product.name }}</strong>
+            <b>{{ money(product.revenue) }}</b>
+            <em>{{ product.percent }}%</em>
+          </div>
+        {% else %}
+          <p class="reports-empty">Nenhum produto vendido no período.</p>
+        {% endfor %}
+      </div>
+      <a class="reports-see-more" href="{{ url_for('products.index') }}">Ver todos os produtos <i class="bi bi-chevron-right"></i></a>
+    </article>
+  </section>
+
+  <section class="reports-bottom-grid">
+    <article class="reports-panel">
+      <div class="reports-panel-title">
+        <h2>Resumo do período</h2>
+      </div>
+
+      <div class="reports-summary-grid">
+        <div>
+          <i class="bi bi-cash-coin green"></i>
+          <span>Lucro estimado <small><i class="bi bi-info-circle"></i></small></span>
+          <strong class="is-good">{{ money(summary.profit) }}</strong>
+        </div>
+        <div>
+          <i class="bi bi-cart gray"></i>
+          <span>Custo dos produtos <small><i class="bi bi-info-circle"></i></small></span>
+          <strong>{{ money(summary.product_cost) }}</strong>
+        </div>
+        <div>
+          <i class="bi bi-percent green"></i>
+          <span>Taxa de serviço <small><i class="bi bi-info-circle"></i></small></span>
+          <strong>{{ money(summary.service_fee) }}</strong>
+        </div>
+        <div>
+          <i class="bi bi-x-circle red"></i>
+          <span>Cancelamentos <small><i class="bi bi-info-circle"></i></small></span>
+          <strong class="is-bad">{{ money(summary.cancellations) }}</strong>
+        </div>
+        <div>
+          <i class="bi bi-tag green"></i>
+          <span>Descontos concedidos <small><i class="bi bi-info-circle"></i></small></span>
+          <strong>{{ money(summary.discounts) }}</strong>
+        </div>
+        <div>
+          <i class="bi bi-shop gray"></i>
+          <span>Mesas ocupadas (média) <small><i class="bi bi-info-circle"></i></small></span>
+          <strong class="is-good">{{ summary.table_rate }}%</strong>
+        </div>
+      </div>
+    </article>
+
+    <article class="reports-panel">
+      <div class="reports-panel-title">
+        <h2>Desempenho por categoria <i class="bi bi-info-circle"></i></h2>
+      </div>
+
+      <div class="reports-category-table">
+        <div class="reports-category-head">
+          <span>Categoria</span>
+          <span>Faturamento</span>
+          <span>% do total</span>
+          <span>Pedidos</span>
+          <span>Ticket Médio</span>
+        </div>
+
+        {% for row in categories %}
+          <div class="reports-category-row">
+            <strong>{{ row.category }}</strong>
+            <span>{{ money(row.revenue) }}</span>
+            <span class="reports-progress"><i style="width: {{ row.percent }}%;"></i><b>{{ row.percent }}%</b></span>
+            <span>{{ row.orders }}</span>
+            <span>{{ money(row.ticket) }}</span>
+          </div>
+        {% else %}
+          <p class="reports-empty">Nenhuma categoria com venda no período.</p>
+        {% endfor %}
+      </div>
+      <a class="reports-see-more" href="{{ url_for('products.index') }}">Ver todas as categorias <i class="bi bi-chevron-right"></i></a>
+    </article>
+  </section>
+</div>
 {% endblock %}
