@@ -72,7 +72,7 @@ def _build_board(sector_slug="cozinha"):
                 "order_id": order_id,
                 "order_code": (order.code if order and order.code else f"#{order_id}"),
                 "table": table_title,
-                "items": group_items,
+                "kds_items": group_items,
                 "total": total,
                 "total_money": _money(total),
                 "minutes": minutes,

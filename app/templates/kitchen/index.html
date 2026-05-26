@@ -38,7 +38,7 @@
                 </div>
 
                 <ul class="kds-items">
-                  {% for item in card.items %}
+                  {% for item in card.kds_items %}
                     <li><span>{{ fmt_qty(item.quantity) }}x</span> {{ item.product.name if item.product else 'Produto' }}</li>
                   {% endfor %}
                 </ul>
