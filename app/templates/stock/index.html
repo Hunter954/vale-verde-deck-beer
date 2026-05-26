@@ -1,16 +1,137 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><h1>Estoque</h1><p>Entradas, perdas, consumo interno, ajustes e histórico.</p></div></div>
-<div class="row g-3">
-<div class="col-lg-4"><div class="glass-card"><h4>Movimentar estoque</h4>
-<form method="post" action="{{ url_for('stock.movement') }}">
-<select class="form-select mb-2" name="product_id">{% for p in products %}<option value="{{ p.id }}">{{ p.name }} — atual {{ p.stock }}</option>{% endfor %}</select>
-<select class="form-select mb-2" name="type"><option>Entrada</option><option>Saída</option><option>Ajuste</option><option>Perda</option><option>Consumo interno</option><option>Transferência</option></select>
-<input class="form-control mb-2" name="quantity" type="number" step="0.001" placeholder="Quantidade">
-<input class="form-control mb-2 js-money-input" name="unit_cost" type="text" inputmode="numeric" placeholder="Custo unitário">
-<input class="form-control mb-2" name="note" placeholder="Observação">
-<button class="btn btn-neon w-100">Registrar</button>
-</form></div></div>
-<div class="col-lg-8"><div class="glass-card table-responsive"><h4>Últimas movimentações</h4><table class="table table-dark"><tbody>{% for m in movements %}<tr><td>{{ m.created_at.strftime("%d/%m %H:%M") }}</td><td>{{ m.product.name }}</td><td>{{ m.type }}</td><td>{{ m.quantity }}</td><td>{{ m.note }}</td></tr>{% endfor %}</tbody></table></div></div>
-</div>
+{% macro stock_url(page=None, status_value=None, category_value=None, per_page_value=None) -%}
+  {{ url_for('stock.index', q=q, status=status if status_value is none else status_value, category_id=category_id if category_value is none else category_value, page=page or 1, per_page=per_page if per_page_value is none else per_page_value) }}
+{%- endmacro %}
+
+<section class="stock-page">
+  <div class="stock-head">
+    <div>
+      <h1>Estoque</h1>
+      <p>Gerencie níveis de estoque, reposição e status dos insumos e produtos.</p>
+    </div>
+    <a class="stock-new-btn" href="{{ url_for('products.create') }}">
+      <i class="bi bi-plus-lg"></i>
+      Novo Item
+    </a>
+  </div>
+
+  <div class="stock-kpi-grid">
+    <div class="stock-kpi normal">
+      <div class="stock-kpi-icon"><i class="bi bi-box-seam"></i></div>
+      <div><span>Itens em estoque</span><strong>{{ total_count }}</strong><small>Total de itens cadastrados</small></div>
+    </div>
+    <div class="stock-kpi attention">
+      <div class="stock-kpi-icon"><i class="bi bi-exclamation-triangle"></i></div>
+      <div><span>Atenção</span><strong>{{ attention_count }}</strong><small>Itens abaixo do mínimo</small></div>
+    </div>
+    <div class="stock-kpi critical">
+      <div class="stock-kpi-icon"><i class="bi bi-exclamation-circle"></i></div>
+      <div><span>Críticos</span><strong>{{ critical_count }}</strong><small>Itens em nível crítico</small></div>
+    </div>
+  </div>
+
+  <form class="stock-filter-card" method="get" action="{{ url_for('stock.index') }}">
+    <div class="stock-search-box">
+      <i class="bi bi-search"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar item..." autocomplete="off">
+    </div>
+
+    <div class="stock-status-tabs">
+      <a class="stock-status-tab {{ 'active' if status == 'all' else '' }}" href="{{ stock_url(status_value='all', page=1) }}">Todos</a>
+      <a class="stock-status-tab {{ 'active' if status == 'normal' else '' }}" href="{{ stock_url(status_value='normal', page=1) }}">Normal</a>
+      <a class="stock-status-tab {{ 'active' if status == 'attention' else '' }}" href="{{ stock_url(status_value='attention', page=1) }}">Atenção</a>
+      <a class="stock-status-tab {{ 'active' if status == 'critical' else '' }}" href="{{ stock_url(status_value='critical', page=1) }}">Crítico</a>
+    </div>
+
+    <input type="hidden" name="status" value="{{ status }}">
+    <input type="hidden" name="per_page" value="{{ per_page }}">
+    <select class="stock-category-select" name="category_id" onchange="this.form.submit()">
+      <option value="">Categoria</option>
+      {% for category in categories %}
+        <option value="{{ category.id }}" {% if category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <div class="stock-table-card">
+    <div class="stock-table-wrap">
+      <table class="stock-table">
+        <thead>
+          <tr>
+            <th>Item <i class="bi bi-arrow-down-up"></i></th>
+            <th>Categoria <i class="bi bi-arrow-down-up"></i></th>
+            <th>Estoque Atual <i class="bi bi-arrow-down-up"></i></th>
+            <th>Estoque Mínimo <i class="bi bi-arrow-down-up"></i></th>
+            <th>Unidade <i class="bi bi-arrow-down-up"></i></th>
+            <th>Status <i class="bi bi-arrow-down-up"></i></th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+          <tr>
+            <td>
+              <div class="stock-name-cell">
+                <img src="{{ product_image_url(p) }}" alt="{{ p.name }}" loading="lazy" onerror="this.src='{{ url_for('static', filename='img/products/produto.svg') }}'">
+                <strong>{{ p.name }}</strong>
+              </div>
+            </td>
+            <td>{{ p.category.name if p.category else 'Sem categoria' }}</td>
+            <td>{{ ('%g' % (p.stock or 0)) }}</td>
+            <td>{{ ('%g' % (p.min_stock or 0)) }}</td>
+            <td>{{ 'kg' if p.category and 'insumo' in p.category.name|lower else 'un' }}</td>
+            <td>
+              <span class="stock-state {{ p.stock_ui_status }}"><i></i>{{ p.stock_ui_label }}</span>
+            </td>
+            <td>
+              <div class="stock-actions">
+                <a href="{{ url_for('products.edit', id=p.id) }}" title="Visualizar item"><i class="bi bi-eye"></i></a>
+                <a href="{{ url_for('products.edit', id=p.id) }}" title="Editar item"><i class="bi bi-pencil"></i></a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7">
+              <div class="stock-empty">
+                <i class="bi bi-box-seam"></i>
+                <strong>Nenhum item encontrado</strong>
+                <span>Use a busca ou altere os filtros para visualizar o estoque.</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stock-footer">
+      <span>
+        {% if pagination.total %}
+          Mostrando {{ ((pagination.page - 1) * pagination.per_page) + 1 }} a {{ ((pagination.page - 1) * pagination.per_page) + products|length }} de {{ pagination.total }} itens
+        {% else %}
+          Mostrando 0 itens
+        {% endif %}
+      </span>
+      <div class="stock-footer-actions">
+        <div class="stock-pager">
+          <a class="pager-btn {{ 'disabled' if not pagination.has_prev else '' }}" href="{{ stock_url(page=pagination.prev_num) }}"><i class="bi bi-chevron-left"></i></a>
+          <span class="pager-current">{{ pagination.page }}</span>
+          <a class="pager-btn {{ 'disabled' if not pagination.has_next else '' }}" href="{{ stock_url(page=pagination.next_num) }}"><i class="bi bi-chevron-right"></i></a>
+        </div>
+        <form class="stock-per-page" method="get" action="{{ url_for('stock.index') }}">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="status" value="{{ status }}">
+          <input type="hidden" name="category_id" value="{{ category_id or '' }}">
+          <select name="per_page" onchange="this.form.submit()">
+            {% for size in [8, 10, 15, 20, 50] %}
+              <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }} por página</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}
